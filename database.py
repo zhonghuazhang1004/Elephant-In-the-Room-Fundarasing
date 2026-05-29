@@ -1,11 +1,12 @@
 """
 Database configuration and initialization for SQLite
+Supports both local development and PythonAnywhere deployment via environment variables
 """
 import sqlite3
 import os
 
-# Database file path
-DATABASE_PATH = os.path.join('data', 'companies.db')
+# Database file path - Support environment variable for PythonAnywhere deployment
+DATABASE_PATH = os.environ.get('DATABASE_PATH', os.path.join('data', 'companies.db'))
 
 
 def get_db_connection():
@@ -18,7 +19,9 @@ def get_db_connection():
 def init_db():
     """Initialize the database with required tables"""
     # Ensure data directory exists
-    os.makedirs('data', exist_ok=True)
+    data_dir = os.path.dirname(DATABASE_PATH)
+    if data_dir:
+        os.makedirs(data_dir, exist_ok=True)
     
     conn = get_db_connection()
     cursor = conn.cursor()
