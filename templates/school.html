@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,65 +13,119 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
-            padding: 20px;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 3px solid #36943b;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-primary {
+            font-size: 20px;
+            font-weight: 700;
+            color: #36943b;
+            line-height: 1.2;
+        }
+
+        .brand-secondary {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+        }
+
+        .navbar-item a {
+            display: block;
+            padding: 20px 25px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .navbar-item a:hover {
+            color: #36943b;
+            border-bottom-color: #36943b;
+            background: #f8faf8;
+        }
+
+        .navbar-item.active a {
+            color: #36943b;
+            border-bottom-color: #36943b;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 40px 20px;
         }
 
         .header {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            color: #36943b;
             margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
         .header h1 {
-            color: #333;
-            font-size: 32px;
+            font-size: 42px;
+            margin-bottom: 10px;
+            font-weight: 700;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 20px;
-        }
-
-        .nav-link {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 10px 20px;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-        }
-
-        .nav-link:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .info-section {
+        .data-section {
             background: white;
             border-radius: 12px;
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             margin-bottom: 30px;
-        }
-
-        .message-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 20px;
-            border-radius: 5px;
-            color: #856404;
         }
 
         .data-header {
@@ -87,93 +140,107 @@
         .data-title {
             font-size: 24px;
             color: #333;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .table-container {
             overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            max-height: 600px;
+            overflow-y: auto;
         }
 
         .data-table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 8px;
-            overflow: hidden;
         }
 
         .data-table thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
             color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .data-table th {
             padding: 15px;
             text-align: left;
             font-weight: 600;
-            text-transform: uppercase;
             font-size: 14px;
+            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .data-table td {
             padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
             color: #333;
         }
 
-        .data-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
         .data-table tbody tr:hover {
-            background-color: #f0f0f0;
+            background: #f8f9ff;
         }
 
-        .footer {
-            text-align: center;
+        .data-table tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .message-box {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
             padding: 20px;
-            color: white;
-            font-size: 14px;
+            border-radius: 5px;
+            color: #721c24;
         }
     </style>
 </head>
-
 <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <div class="brand-logo">F</div>
+                <div class="brand-text">
+                    <div class="brand-primary">Fidelity</div>
+                    <div class="brand-secondary">in partnership with Elephant in the Room</div>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li class="navbar-item"><a href="/">Dashboard</a></li>
+                <li class="navbar-item"><a href="/company">Company Info</a></li>
+                <li class="navbar-item active"><a href="/school">School Info</a></li>
+                <li class="navbar-item"><a href="/admin">Admin Panel</a></li>
+            </ul>
+        </div>
+    </nav>
+
     <div class="container">
         <div class="header">
             <h1>School Information</h1>
-            <div class="nav-links">
-                <a href="/" class="nav-link">Home</a>
-            </div>
         </div>
 
         {% if message %}
-        <div class="info-section">
+        <div class="data-section">
             <div class="message-box">
                 {{ message }}
             </div>
         </div>
         {% else %}
-        <div class="info-section">
+        
+        <div class="data-section">
             <div class="data-header">
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <div class="data-title">School Data</div>
-                    <a href="/company" style="color: #667eea; text-decoration: none; font-weight: 600; padding: 8px 16px; border-radius: 20px; border: 2px solid #667eea; transition: all 0.3s ease; font-size: 14px;" onmouseover="this.style.background='#667eea'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='#667eea'">Company Information →</a>
-                </div>
+                <div class="data-title">School Records</div>
                 <span style="font-size: 14px; color: #666;">Total Records: {{ total_rows }}</span>
             </div>
-
             <div class="table-container">
                 {{ table | safe }}
             </div>
         </div>
         {% endif %}
-
-        <div class="footer">
-            <p>&copy; 2026 Elephant in the Room Fundrasing. All rights reserved.</p>
-        </div>
     </div>
 </body>
-
 </html>

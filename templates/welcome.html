@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome - Company Information</title>
+    <title>Fundraising Dashboard - Fidelity & Elephant in the Room</title>
     <style>
         * {
             margin: 0;
@@ -14,69 +13,537 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f7fa;
             min-height: 100vh;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 3px solid #36943b;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            text-align: center;
             color: white;
-            max-width: 900px;
-        }
-
-        .header {
-            margin-bottom: 40px;
-        }
-
-        .header h1 {
-            font-size: 56px;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .nav-container {
-            margin: 40px 0;
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .nav-btn {
-            display: inline-block;
-            padding: 20px 50px;
-            background: white;
-            color: #667eea;
-            text-decoration: none;
-            border-radius: 50px;
-            font-size: 24px;
             font-weight: 700;
+            font-size: 20px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-primary {
+            font-size: 20px;
+            font-weight: 700;
+            color: #36943b;
+            line-height: 1.2;
+        }
+
+        .brand-secondary {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+        }
+
+        .navbar-item a {
+            display: block;
+            padding: 20px 25px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
             transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .navbar-item a:hover {
+            color: #36943b;
+            border-bottom-color: #36943b;
+            background: #f8faf8;
+        }
+
+        .navbar-item.active a {
+            color: #36943b;
+            border-bottom-color: #36943b;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            padding: 80px 40px;
+            color: white;
+        }
+
+        .hero-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 20px;
+            opacity: 0.95;
+            margin-bottom: 40px;
+            max-width: 700px;
+            line-height: 1.6;
+        }
+
+        /* Stats Overview */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.2);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
-        .nav-btn:hover {
+        .stat-icon {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .stat-value {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .section-header {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 32px;
+            color: #1a1a1a;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .section-description {
+            font-size: 16px;
+            color: #666;
+        }
+
+        /* Action Cards Grid */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border-left: 4px solid #36943b;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .action-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(54, 148, 59, 0.15);
+            border-left-width: 6px;
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .card-description {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .card-stats {
+            display: flex;
+            gap: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .card-stat {
+            flex: 1;
+        }
+
+        .card-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #36943b;
+        }
+
+        .card-stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Quick Actions Section */
+        .quick-actions {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .actions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .actions-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #36943b;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2d7a32;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(54, 148, 59, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f5f7fa;
+            color: #36943b;
+            border: 2px solid #36943b;
+        }
+
+        .btn-secondary:hover {
+            background: #36943b;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .message-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            border-radius: 8px;
+            color: #155724;
+            margin-bottom: 30px;
+        }
+
+        /* Footer */
+        .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 40px;
+            margin-top: 60px;
+        }
+
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .footer-text {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .footer-link {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-link:hover {
+            opacity: 1;
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Elephant in the Room Fundrasing</h1>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <div class="brand-logo">F</div>
+                <div class="brand-text">
+                    <div class="brand-primary">Fidelity</div>
+                    <div class="brand-secondary">in partnership with Elephant in the Room</div>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li class="navbar-item active"><a href="/">Dashboard</a></li>
+                <li class="navbar-item"><a href="/company">Company Info</a></li>
+                <li class="navbar-item"><a href="/school">School Info</a></li>
+                <li class="navbar-item"><a href="/admin">Admin Panel</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-container">
+            <h1 class="hero-title">Fundraising Dashboard</h1>
+            <p class="hero-subtitle">
+                Track and manage company partnerships for educational funding initiatives. 
+                Monitor progress, view locations, and coordinate with schools across Ireland.
+            </p>
+
+            {% if message %}
+            <div class="message-box">
+                {{ message }}
+            </div>
+            {% endif %}
+
+            <!-- Statistics Overview -->
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-value">{{ company_count | default(0) }}</div>
+                    <div class="stat-label">Partner Companies</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎓</div>
+                    <div class="stat-value">{{ school_count | default(0) }}</div>
+                    <div class="stat-label">Participating Schools</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📍</div>
+                    <div class="stat-value">{{ location_count | default(0) }}</div>
+                    <div class="stat-label">Mapped Locations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value">{{ active_count | default(0) }}</div>
+                    <div class="stat-label">Active Partnerships</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Action Cards -->
+        <div class="section-header">
+            <h2 class="section-title">Quick Access</h2>
+            <p class="section-description">Manage your fundraising activities and data</p>
         </div>
 
-        <div class="nav-container">
-            <a href="/company" class="nav-btn">Company Data</a>
-            <a href="/school" class="nav-btn">School Information</a>
+        <div class="action-grid">
+            <!-- Company Information Card -->
+            <a href="/company" class="action-card">
+                <div class="card-icon">🏢</div>
+                <h3 class="card-title">Company Information</h3>
+                <p class="card-description">
+                    View detailed information about partner companies, including contact details, 
+                    preferred schools, and geographic distribution across Ireland.
+                </p>
+                <div class="card-stats">
+                    <div class="card-stat">
+                        <div class="card-stat-value">{{ company_count | default(0) }}</div>
+                        <div class="card-stat-label">Companies</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="card-stat-value">{{ location_count | default(0) }}</div>
+                        <div class="card-stat-label">Locations</div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- School Information Card -->
+            <a href="/school" class="action-card">
+                <div class="card-icon">🎓</div>
+                <h3 class="card-title">School Information</h3>
+                <p class="card-description">
+                    Access comprehensive data on participating schools, their contact information, 
+                    and partnership status with fundraising companies.
+                </p>
+                <div class="card-stats">
+                    <div class="card-stat">
+                        <div class="card-stat-value">{{ school_count | default(0) }}</div>
+                        <div class="card-stat-label">Schools</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="card-stat-value">{{ active_schools | default(0) }}</div>
+                        <div class="card-stat-label">Active</div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Admin Panel Card -->
+            <a href="/admin" class="action-card">
+                <div class="card-icon">⚙️</div>
+                <h3 class="card-title">Admin Panel</h3>
+                <p class="card-description">
+                    Manage database records, import new data from Excel files, add or edit 
+                    company and school information through an intuitive web interface.
+                </p>
+                <div class="card-stats">
+                    <div class="card-stat">
+                        <div class="card-stat-value">CRUD</div>
+                        <div class="card-stat-label">Operations</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="card-stat-value">Import</div>
+                        <div class="card-stat-label">Excel Files</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="actions-header">
+                <h3 class="actions-title">Quick Actions</h3>
+            </div>
+            <div class="button-group">
+                <form method="POST" action="/admin/import" style="display: inline;">
+                    <button type="submit" class="btn btn-primary">🔄 Re-import Data from Excel</button>
+                </form>
+                <a href="/company" class="btn btn-secondary">📊 View Company Map</a>
+                <a href="/admin" class="btn btn-secondary">➕ Add New Record</a>
+            </div>
         </div>
     </div>
-</body>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p class="footer-text">
+                © 2026 Fidelity & Elephant in the Room Partnership. All rights reserved.
+            </p>
+            <p class="footer-text">
+                Fundraising Management System for Educational Initiatives
+            </p>
+            <div class="footer-links">
+                <a href="/" class="footer-link">Dashboard</a>
+                <a href="/company" class="footer-link">Companies</a>
+                <a href="/school" class="footer-link">Schools</a>
+                <a href="/admin" class="footer-link">Admin</a>
+            </div>
+        </div>
+    </footer>
+</body>
 </html>

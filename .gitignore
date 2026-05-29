@@ -4,14 +4,27 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
-env/
-ENV/
 build/
 develop-eggs/
-*.egg-info/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
 *.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
 
 # IDE
 .vscode/
@@ -24,10 +37,16 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Database (可选 - 如果你想保留数据库在版本控制中，可以注释掉这行)
+data/*.db
+
+# Configuration with sensitive data
+config_local.py
 .env
-.env.local
-.env.*.local
 
 # Logs
 *.log
+
+# Uploads
+uploads/*
+!uploads/.gitkeep

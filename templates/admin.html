@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Database Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 3px solid #36943b;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-primary {
+            font-size: 20px;
+            font-weight: 700;
+            color: #36943b;
+            line-height: 1.2;
+        }
+
+        .brand-secondary {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+        }
+
+        .navbar-item a {
+            display: block;
+            padding: 20px 25px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .navbar-item a:hover {
+            color: #36943b;
+            border-bottom-color: #36943b;
+            background: #f8faf8;
+        }
+
+        .navbar-item.active a {
+            color: #36943b;
+            border-bottom-color: #36943b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            display: flex;
+            gap: 30px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            color: #36943b;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-item {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-link:hover {
+            background: #f8faf8;
+            color: #36943b;
+        }
+
+        .sidebar-link.active {
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            color: white;
+        }
+
+        .sidebar-icon {
+            font-size: 20px;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header {
+            text-align: center;
+            color: #36943b;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #36943b;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #36943b;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2d7a32;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(54, 148, 59, 0.4);
+        }
+
+        .btn-success {
+            background: #36943b;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #2d7a32;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .data-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .data-table thead {
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8f9ff;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .edit-btn:hover {
+            background: #e0a800;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .message-box {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .message-success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+
+        .message-error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 12px 30px;
+            background: white;
+            color: #36943b;
+            border: 2px solid #36943b;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: #36943b;
+            color: white;
+        }
+
+        .tab-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(54, 148, 59, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <div class="brand-logo">F</div>
+                <div class="brand-text">
+                    <div class="brand-primary">Fidelity</div>
+                    <div class="brand-secondary">in partnership with Elephant in the Room</div>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li class="navbar-item"><a href="/">Dashboard</a></li>
+                <li class="navbar-item"><a href="/company">Company Info</a></li>
+                <li class="navbar-item"><a href="/school">School Info</a></li>
+                <li class="navbar-item active"><a href="/admin">Admin Panel</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-title">Admin Menu</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="/admin" class="sidebar-link active" id="nav-dashboard">
+                        <span class="sidebar-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/admin/companies" class="sidebar-link" id="nav-companies">
+                        <span class="sidebar-icon">🏢</span>
+                        <span>Companies</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/admin/schools" class="sidebar-link" id="nav-schools">
+                        <span class="sidebar-icon">🎓</span>
+                        <span>Schools</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/team-files" class="sidebar-link" id="nav-files">
+                        <span class="sidebar-icon">📁</span>
+                        <span>Team Files</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="confirmClear(); return false;">
+                        <span class="sidebar-icon">⚠️</span>
+                        <span>Clear Data</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="header">
+                <h1>Database Management</h1>
+            </div>
+
+            {% if message %}
+            <div class="message-box {{ 'message-success' if success else 'message-error' }}">
+                {{ message }}
+            </div>
+            {% endif %}
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ company_count }}</div>
+                    <div class="stat-label">Total Companies</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ school_count }}</div>
+                    <div class="stat-label">Total Schools</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ location_count }}</div>
+                    <div class="stat-label">Mapped Locations</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="action-section">
+                <div class="section-title">Quick Actions</div>
+                <div class="button-group">
+                    <form method="POST" action="/admin/import" style="display: inline;">
+                        <button type="submit" class="btn btn-success">🔄 Re-import from Excel</button>
+                    </form>
+                    <button onclick="openAddModal('company')" class="btn btn-primary">➕ Add Company</button>
+                    <button onclick="openAddModal('school')" class="btn btn-primary">➕ Add School</button>
+                    <button onclick="confirmClear()" class="btn btn-danger">⚠️ Clear All Data</button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="data-section">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="showTab('companies')">Companies</button>
+                    <button class="tab-btn" onclick="showTab('schools')">Schools</button>
+                </div>
+
+                <!-- Companies Tab -->
+                <div id="companies-tab" class="tab-content active">
+                    <div class="section-title">Company Records</div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Company Name</th>
+                                    <th>Eircode</th>
+                                    <th>Address</th>
+                                    <th>Contact Name</th>
+                                    <th>Contact Email</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for company in companies %}
+                                <tr>
+                                    <td>{{ company.id }}</td>
+                                    <td>{{ company.company_name }}</td>
+                                    <td>{{ company.eircode or '' }}</td>
+                                    <td>{{ company.address or '' }}</td>
+                                    <td>{{ company.contact_name or '' }}</td>
+                                    <td>{{ company.contact_email or '' }}</td>
+                                    <td>{{ company.status or 'pending' }}</td>
+                                    <td>
+                                        <button class="action-btn edit-btn" onclick='editCompany({{ company | tojson }})'>Edit</button>
+                                        <button class="action-btn delete-btn" onclick="deleteCompany({{ company.id }})">Delete</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Schools Tab -->
+                <div id="schools-tab" class="tab-content">
+                    <div class="section-title">School Records</div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>School Name</th>
+                                    <th>Address</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for school in schools %}
+                                <tr>
+                                    <td>{{ school.id }}</td>
+                                    <td>{{ school.school_name }}</td>
+                                    <td>{{ school.address or '' }}</td>
+                                    <td>{{ school.email or '' }}</td>
+                                    <td>{{ school.phone or '' }}</td>
+                                    <td>{{ school.status or 'active' }}</td>
+                                    <td>
+                                        <button class="action-btn edit-btn" onclick='editSchool({{ school | tojson }})'>Edit</button>
+                                        <button class="action-btn delete-btn" onclick="deleteSchool({{ school.id }})">Delete</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- Close main-content -->
+    </div> <!-- Close container -->
+
+    <!-- Add/Edit Company Modal -->
+    <div id="companyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="companyModalTitle">Add Company</div>
+                <span class="close" onclick="closeModal('companyModal')">&times;</span>
+            </div>
+            <form id="companyForm" method="POST" action="/admin/company/save">
+                <input type="hidden" id="companyId" name="id">
+                <div class="form-group">
+                    <label>Company Name *</label>
+                    <input type="text" id="companyName" name="company_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Eircode</label>
+                    <input type="text" id="companyEircode" name="eircode">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea id="companyAddress" name="address" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Preferred School</label>
+                    <input type="text" id="companyPreferredSchool" name="preferred_school">
+                </div>
+                <div class="form-group">
+                    <label>Preferred Area</label>
+                    <input type="text" id="companyPreferredArea" name="preferred_area">
+                </div>
+                <div class="form-group">
+                    <label>Contact Name</label>
+                    <input type="text" id="companyContactName" name="contact_name">
+                </div>
+                <div class="form-group">
+                    <label>Contact Email</label>
+                    <input type="email" id="companyContactEmail" name="contact_email">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="companyStatus" name="status">
+                        <option value="pending">Pending</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal('companyModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit School Modal -->
+    <div id="schoolModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="schoolModalTitle">Add School</div>
+                <span class="close" onclick="closeModal('schoolModal')">&times;</span>
+            </div>
+            <form id="schoolForm" method="POST" action="/admin/school/save">
+                <input type="hidden" id="schoolId" name="id">
+                <div class="form-group">
+                    <label>School Name *</label>
+                    <input type="text" id="schoolName" name="school_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea id="schoolAddress" name="address" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="schoolEmail" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" id="schoolPhone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label>Contact Info</label>
+                    <textarea id="schoolContactInfo" name="contact_info" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="schoolStatus" name="status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal('schoolModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Modal functions
+        function openAddModal(type) {
+            if (type === 'company') {
+                document.getElementById('companyModalTitle').textContent = 'Add Company';
+                document.getElementById('companyForm').reset();
+                document.getElementById('companyId').value = '';
+                document.getElementById('companyModal').style.display = 'block';
+            } else if (type === 'school') {
+                document.getElementById('schoolModalTitle').textContent = 'Add School';
+                document.getElementById('schoolForm').reset();
+                document.getElementById('schoolId').value = '';
+                document.getElementById('schoolModal').style.display = 'block';
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function editCompany(company) {
+            document.getElementById('companyModalTitle').textContent = 'Edit Company';
+            document.getElementById('companyId').value = company.id;
+            document.getElementById('companyName').value = company.company_name || '';
+            document.getElementById('companyEircode').value = company.eircode || '';
+            document.getElementById('companyAddress').value = company.address || '';
+            document.getElementById('companyPreferredSchool').value = company.preferred_school || '';
+            document.getElementById('companyPreferredArea').value = company.preferred_area || '';
+            document.getElementById('companyContactName').value = company.contact_name || '';
+            document.getElementById('companyContactEmail').value = company.contact_email || '';
+            document.getElementById('companyStatus').value = company.status || 'pending';
+            document.getElementById('companyModal').style.display = 'block';
+        }
+
+        function editSchool(school) {
+            document.getElementById('schoolModalTitle').textContent = 'Edit School';
+            document.getElementById('schoolId').value = school.id;
+            document.getElementById('schoolName').value = school.school_name || '';
+            document.getElementById('schoolAddress').value = school.address || '';
+            document.getElementById('schoolEmail').value = school.email || '';
+            document.getElementById('schoolPhone').value = school.phone || '';
+            document.getElementById('schoolContactInfo').value = school.contact_info || '';
+            document.getElementById('schoolStatus').value = school.status || 'active';
+            document.getElementById('schoolModal').style.display = 'block';
+        }
+
+        function deleteCompany(id) {
+            if (confirm('Are you sure you want to delete this company?')) {
+                window.location.href = '/admin/company/delete/' + id;
+            }
+        }
+
+        function deleteSchool(id) {
+            if (confirm('Are you sure you want to delete this school?')) {
+                window.location.href = '/admin/school/delete/' + id;
+            }
+        }
+
+        function confirmClear() {
+            if (confirm('⚠️ WARNING: This will delete ALL data. Are you sure?')) {
+                if (confirm('This action cannot be undone. Continue?')) {
+                    window.location.href = '/admin/clear';
+                }
+            }
+        }
+
+        // Handle sidebar navigation active state
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            
+            sidebarLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
