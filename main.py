@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, send_from_directory, redirect
 import pandas as pd
 import os
 import glob
+import math
 import requests
 import time
 import random
@@ -266,6 +267,11 @@ def import_schools_from_excel(file_path):
                 email = str(row.get('Email', '')).strip() if pd.notna(row.get('Email')) else None
                 phone = str(row.get('Phone No.', '')).strip() if pd.notna(row.get('Phone No.')) else None
                 contact_info = str(row.get('Principal Name', '')).strip() if pd.notna(row.get('Principal Name')) else None
+                deis = str(row.get('DEIS (Y/N)', '')).strip().upper() or None
+                school_type = str(row.get('School Type', '')).strip() if pd.notna(row.get('School Type')) else None
+                school_level = str(row.get('School Level', '')).strip() if pd.notna(row.get('School Level')) else None
+                enrolment_raw = row.get('Enrolment per Return')
+                enrolment = int(float(enrolment_raw)) if pd.notna(enrolment_raw) and float(enrolment_raw) < 5000 else None
 
                 # Build address from up to 4 address lines
                 addr_parts = [
@@ -297,8 +303,9 @@ def import_schools_from_excel(file_path):
                 cursor.execute('''
                     INSERT INTO schools
                     (roll_number, school_name, eircode, address, county,
-                     latitude, longitude, contact_info, email, phone)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     latitude, longitude, contact_info, email, phone,
+                     deis, school_type, school_level, enrolment)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(roll_number) DO UPDATE SET
                         school_name  = excluded.school_name,
                         eircode      = excluded.eircode,
@@ -309,9 +316,14 @@ def import_schools_from_excel(file_path):
                         contact_info = excluded.contact_info,
                         email        = excluded.email,
                         phone        = excluded.phone,
+                        deis         = excluded.deis,
+                        school_type  = excluded.school_type,
+                        school_level = excluded.school_level,
+                        enrolment    = excluded.enrolment,
                         updated_at   = CURRENT_TIMESTAMP
                 ''', (roll_number, school_name, eircode, address, county,
-                      latitude, longitude, contact_info, email, phone))
+                      latitude, longitude, contact_info, email, phone,
+                      deis, school_type, school_level, enrolment))
 
                 imported_count += 1
 
@@ -360,6 +372,7 @@ def get_all_schools():
     cursor.execute('''
         SELECT id, roll_number, school_name, eircode, address, county,
                latitude, longitude, contact_info, email, phone,
+               deis, school_type, school_level, enrolment,
                status, created_at
         FROM schools
         ORDER BY school_name ASC
@@ -406,8 +419,127 @@ def get_company_locations():
     
     locations = [dict(row) for row in cursor.fetchall()]
     conn.close()
-    
+
     return locations
+
+
+# ---------------------------------------------------------------------------
+# Matching engine
+# ---------------------------------------------------------------------------
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Return great-circle distance in km between two lat/lon points."""
+    R = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+_MAX_DISTANCE_KM = 25
+_ENROLMENT_CAP = 600  # realistic 99th-percentile cap for normalization
+
+
+def score_company_school(company: dict, school: dict) -> dict | None:
+    """
+    Score one (company, school) pair. Returns a score dict or None if
+    coordinates are unavailable and there's no explicit preference match.
+
+    Score components (weights):
+      - Explicit preferred-school name match → 100 (override)
+      - Distance 0-25km                      → 60%
+      - Preferred-area / county match        → 20%
+      - DEIS status                          → 10%
+      - Enrolment (normalized to 600)        → 10%
+    """
+    pref = (company.get('preferred_school') or '').strip().lower()
+    sname = (school.get('school_name') or '').strip().lower()
+
+    # Explicit preferred-school override
+    if pref and (pref == sname or pref in sname or sname in pref):
+        clat, clon = company.get('latitude'), company.get('longitude')
+        slat, slon = school.get('latitude'), school.get('longitude')
+        dist_km = round(haversine(clat, clon, slat, slon), 2) if all(v is not None for v in (clat, clon, slat, slon)) else None
+        return {
+            'total_score': 100,
+            'distance_km': dist_km,
+            'distance_score': None,
+            'area_score': None,
+            'deis_score': None,
+            'enrolment_score': None,
+            'is_preferred_match': True,
+            'outside_radius': (dist_km is not None and dist_km > _MAX_DISTANCE_KM),
+        }
+
+    clat, clon = company.get('latitude'), company.get('longitude')
+    slat, slon = school.get('latitude'), school.get('longitude')
+    if any(v is None for v in (clat, clon, slat, slon)):
+        return None
+
+    dist_km = haversine(clat, clon, slat, slon)
+    distance_score = max(0.0, 100.0 * (1 - dist_km / _MAX_DISTANCE_KM))
+
+    area = (company.get('preferred_area') or '').strip().lower()
+    county = (school.get('county') or '').strip().lower()
+    addr = (school.get('address') or '').strip().lower()
+    area_score = 100 if area and (area in county or area in addr or county in area) else 0
+
+    deis_score = 100 if (school.get('deis') or '').upper() == 'Y' else 0
+
+    enrolment = school.get('enrolment') or 0
+    enrolment_score = min(100, round(100 * enrolment / _ENROLMENT_CAP))
+
+    total = (0.60 * distance_score + 0.20 * area_score +
+             0.10 * deis_score + 0.10 * enrolment_score)
+
+    return {
+        'total_score': round(total, 1),
+        'distance_km': round(dist_km, 2),
+        'distance_score': round(distance_score, 1),
+        'area_score': area_score,
+        'deis_score': deis_score,
+        'enrolment_score': enrolment_score,
+        'is_preferred_match': False,
+        'outside_radius': dist_km > _MAX_DISTANCE_KM,
+    }
+
+
+def get_matches_for_company(company_id: int, max_km: float = _MAX_DISTANCE_KM, top_n: int = 10) -> list:
+    """
+    Return a ranked list of (school_dict, score_dict) for one company.
+    Rural fallback: if fewer than 5 schools are within max_km, extend the
+    search to all schools sorted by distance, flagging them as outside radius.
+    """
+    companies = get_all_companies()
+    company = next((c for c in companies if c['id'] == company_id), None)
+    if company is None:
+        return []
+
+    schools = get_all_schools()
+
+    scored = []
+    for school in schools:
+        result = score_company_school(company, school)
+        if result is not None:
+            scored.append((school, result))
+
+    preferred_hits = [(s, r) for s, r in scored if r['is_preferred_match']]
+    normal = [(s, r) for s, r in scored if not r['is_preferred_match']]
+
+    within = [(s, r) for s, r in normal if not r['outside_radius']]
+    within.sort(key=lambda x: x[1]['total_score'], reverse=True)
+
+    if preferred_hits:
+        return preferred_hits + within[:top_n - len(preferred_hits)]
+
+    # Rural fallback: extend if fewer than 5 within radius
+    if len(within) < 5:
+        outside = [(s, r) for s, r in normal if r['outside_radius']]
+        outside.sort(key=lambda x: x[1]['distance_km'])
+        return (within + outside)[:top_n]
+
+    return within[:top_n]
 
 
 @app.route('/')
@@ -1060,6 +1192,29 @@ def delete_file(file_id):
     
     except Exception as e:
         return redirect(url_for('team_files', error=f'Error deleting file: {str(e)}'))
+
+
+@app.route('/match')
+def match_overview():
+    """Overview: all companies with their top 3 school matches."""
+    companies = get_all_companies()
+    overview = []
+    for company in companies:
+        matches = get_matches_for_company(company['id'], top_n=3)
+        overview.append({'company': company, 'matches': matches})
+    return render_template('match.html', overview=overview, view='overview')
+
+
+@app.route('/match/company/<int:company_id>')
+def match_detail(company_id):
+    """Detail: top 10 matches for one company."""
+    companies = get_all_companies()
+    company = next((c for c in companies if c['id'] == company_id), None)
+    if company is None:
+        return render_template('match.html', error='Company not found', view='detail',
+                               company=None, matches=[])
+    matches = get_matches_for_company(company_id, top_n=10)
+    return render_template('match.html', company=company, matches=matches, view='detail')
 
 
 if __name__ == '__main__':

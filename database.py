@@ -60,6 +60,10 @@ def init_db():
             contact_info TEXT,
             email TEXT,
             phone TEXT,
+            deis TEXT,
+            school_type TEXT,
+            school_level TEXT,
+            enrolment INTEGER,
             status TEXT DEFAULT 'active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -73,6 +77,10 @@ def init_db():
         ('county', 'TEXT'),
         ('latitude', 'REAL'),
         ('longitude', 'REAL'),
+        ('deis', 'TEXT'),
+        ('school_type', 'TEXT'),
+        ('school_level', 'TEXT'),
+        ('enrolment', 'INTEGER'),
     ]:
         try:
             cursor.execute(f'ALTER TABLE schools ADD COLUMN {col} {definition}')
