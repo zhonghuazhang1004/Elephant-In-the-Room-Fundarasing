@@ -24,298 +24,78 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Initialize database
 database.init_db()
 
-# Initialize Google Maps client if API key is configured
-gmaps_client = None
-if hasattr(config, 'GOOGLE_MAPS_API_KEY') and config.GOOGLE_MAPS_API_KEY != "YOUR_API_KEY_HERE":
-    try:
-        import googlemaps
-        gmaps_client = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY)
-        print("✓ Google Maps API initialized successfully")
-    except ImportError:
-        print("⚠ googlemaps library not installed. Run: pip install googlemaps")
-    except Exception as e:
-        print(f"⚠ Error initializing Google Maps: {e}")
+_nominatim_last_call = 0.0
+
+ROUTING_KEY_COORDS = {
+    'D01': (53.3498, -6.2603), 'D02': (53.3441, -6.2675), 'D03': (53.3515, -6.2540),
+    'D04': (53.3308, -6.2419), 'D05': (53.3378, -6.2512), 'D06': (53.3278, -6.2597),
+    'D07': (53.3467, -6.2756), 'D08': (53.3425, -6.2812), 'D09': (53.3698, -6.2456),
+    'D10': (53.3345, -6.2934), 'D11': (53.3389, -6.3012), 'D12': (53.3156, -6.2789),
+    'D13': (53.3712, -6.1789), 'D14': (53.3234, -6.2234), 'D15': (53.3889, -6.3456),
+    'D16': (53.2978, -6.2123), 'D17': (53.3567, -6.1234), 'D18': (53.2789, -6.1567),
+    'D20': (53.4123, -6.3789), 'D22': (53.3456, -6.3912), 'D24': (53.2912, -6.3345),
+    'W23': (53.2189, -6.6756), 'W12': (53.3456, -6.4567), 'W34': (53.5234, -7.3456),
+    'A65': (53.4567, -7.8901), 'A42': (53.8901, -6.7234), 'A82': (54.0234, -6.4567),
+    'C15': (54.6789, -7.7234), 'F12': (54.2345, -7.6789), 'G12': (53.2678, -9.0123),
+    'H12': (52.6789, -8.6234), 'K15': (52.8901, -9.5678), 'P12': (51.8901, -8.4567),
+    'T12': (52.2345, -7.1234), 'Y14': (52.7890, -7.5678),
+}
 
 
-def convert_eircode_with_google(eircode):
-    """
-    Convert Eircode to coordinates using Google Maps Geocoding API.
-    
-    Args:
-        eircode: The Eircode to convert
-    
-    Returns:
-        Tuple of (lat, lon) or None if not found
-    """
-    if not gmaps_client:
-        return None
-    
-    if pd.isna(eircode) or str(eircode).strip() == '':
-        return None
-    
-    # Clean the eircode
-    eircode_str = str(eircode).strip().upper()
-    if len(eircode_str) == 7 and ' ' not in eircode_str:
-        eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
-    else:
-        eircode_formatted = eircode_str
-    
-    try:
-        # Use Google Maps Geocoding API
-        result = gmaps_client.geocode(eircode_formatted + ', Ireland')
-        
-        if result and len(result) > 0:
-            location = result[0]['geometry']['location']
-            lat = location['lat']
-            lng = location['lng']
-            
-            # Verify it's in Ireland by checking address components
-            address_components = result[0].get('address_components', [])
-            country_found = False
-            
-            for component in address_components:
-                if 'country' in component.get('types', []):
-                    if component.get('short_name') == 'IE' or component.get('long_name') == 'Ireland':
-                        country_found = True
-                    break
-            
-            if country_found:
-                return (lat, lng)
-        
-        return None
-    
-    except Exception as e:
-        print(f"Error with Google Maps API for {eircode}: {str(e)}")
-        return None
-
-
-def get_address_from_google(eircode):
-    """
-    Get full formatted address and coordinates from Eircode using Google Maps API.
-    
-    Args:
-        eircode: The Eircode to convert
-    
-    Returns:
-        Dictionary with 'address', 'lat', 'lon' or None if not found
-    """
-    if not gmaps_client:
-        return None
-    
-    if pd.isna(eircode) or str(eircode).strip() == '':
-        return None
-    
-    # Clean the eircode
-    eircode_str = str(eircode).strip().upper()
-    if len(eircode_str) == 7 and ' ' not in eircode_str:
-        eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
-    else:
-        eircode_formatted = eircode_str
-    
-    try:
-        # Use Google Maps Geocoding API
-        result = gmaps_client.geocode(eircode_formatted + ', Ireland')
-        
-        if result and len(result) > 0:
-            location = result[0]['geometry']['location']
-            lat = location['lat']
-            lng = location['lng']
-            
-            # Verify it's in Ireland
-            address_components = result[0].get('address_components', [])
-            country_found = False
-            
-            for component in address_components:
-                if 'country' in component.get('types', []):
-                    if component.get('short_name') == 'IE' or component.get('long_name') == 'Ireland':
-                        country_found = True
-                    break
-            
-            if country_found:
-                # Extract formatted address following Irish address规范
-                formatted_address = extract_irish_address(address_components, eircode_formatted)
-                
-                return {
-                    'address': formatted_address,
-                    'lat': lat,
-                    'lon': lng
-                }
-        
-        return None
-    
-    except Exception as e:
-        print(f"Error getting address from Google Maps for {eircode}: {str(e)}")
-        return None
-
-
-def extract_irish_address(address_components, eircode):
-    """
-    Extract and format Irish address from Google Maps address components.
-    Following Irish address规范: street, town/community, Co. County, Eircode
-    
-    Args:
-        address_components: List of address components from Google Maps
-        eircode: The original Eircode
-    
-    Returns:
-        Formatted Irish address string
-    """
-    street = ''
-    town = ''
-    county = ''
-    
-    for component in address_components:
-        types = component.get('types', [])
-        
-        # Extract street address
-        if 'street_number' in types or 'route' in types:
-            if not street:
-                street = component.get('long_name', '')
-            else:
-                street += ', ' + component.get('long_name', '')
-        
-        # Extract town/locality
-        elif 'locality' in types or 'sublocality' in types:
-            if not town:
-                town = component.get('long_name', '')
-        
-        # Extract county
-        elif 'administrative_area_level_2' in types:
-            county_name = component.get('long_name', '')
-            # Remove "County" prefix if present and format as "Co. XX"
-            if 'County' in county_name:
-                county_name = county_name.replace('County', 'Co.').strip()
-            elif 'Co.' not in county_name:
-                county_name = 'Co. ' + county_name
-            county = county_name
-    
-    # Build formatted address
-    parts = []
-    if street:
-        parts.append(street)
-    if town:
-        parts.append(town)
-    if county:
-        parts.append(county)
-    if eircode:
-        parts.append(eircode)
-    
-    return ', '.join(parts) if parts else eircode
+def _nominatim_search(query):
+    """Single Nominatim request with 1 RPS rate limiting."""
+    global _nominatim_last_call
+    elapsed = time.time() - _nominatim_last_call
+    if elapsed < 1.0:
+        time.sleep(1.0 - elapsed)
+    url = f"https://nominatim.openstreetmap.org/search?q={query}&format=json&limit=5"
+    response = requests.get(url, headers={'User-Agent': 'ElephantFundraising/1.0'}, timeout=10)
+    _nominatim_last_call = time.time()
+    if response.status_code == 200:
+        return response.json()
+    return []
 
 
 def convert_eircode_to_address(eircode):
     """
-    Convert a single Eircode to latitude and longitude coordinates within Ireland.
-    Uses Google Maps API if available, otherwise falls back to OpenStreetMap.
-    
-    Args:
-        eircode: The Eircode to convert (e.g., "A65 F4E2")
-    
+    Convert an Eircode to latitude,longitude using Nominatim (OpenStreetMap).
+    Falls back to routing-key centroid if Nominatim returns no result.
+
     Returns:
-        String containing latitude,longitude or empty string if not found
+        String "lat, lon" or empty string if not found.
     """
     if pd.isna(eircode) or str(eircode).strip() == '':
         return ''
-    
-    # Clean the eircode - format with space (e.g., "A65 F4E2")
+
     eircode_str = str(eircode).strip().upper()
-    # Ensure proper format: XXX XXXX
     if len(eircode_str) == 7 and ' ' not in eircode_str:
         eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
     else:
         eircode_formatted = eircode_str
-    
-    # Try Google Maps API first if available
-    if gmaps_client:
-        coords = convert_eircode_with_google(eircode_formatted)
-        if coords:
-            return f"{coords[0]}, {coords[1]}"
-    
-    # Fallback to OpenStreetMap if Google Maps fails or is not configured
+
     try:
-        headers = {
-            'User-Agent': 'EircodeConverter/1.0'
-        }
-        
-        # Strategy 1: Try OpenStreetMap with various query formats
-        search_queries = [
-            f"{eircode_formatted}, Ireland",
-            f"Eircode {eircode_formatted}, Ireland",
-            f"{eircode_formatted}",
-        ]
-        
-        for query in search_queries:
-            url = f"https://nominatim.openstreetmap.org/search?q={query.replace(' ', '+')}&format=json&limit=5"
-            
-            response = requests.get(url, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                if data and len(data) > 0:
-                    # Filter results to ensure they're in Ireland
-                    for result in data:
-                        display_name = result.get('display_name', '').lower()
-                        
-                        # Check if result is in Ireland (not UK or elsewhere)
-                        if 'ireland' in display_name and 'united kingdom' not in display_name and 'england' not in display_name:
-                            lat = float(result.get('lat', 0))
-                            lon = float(result.get('lon', 0))
-                            
-                            # Verify coordinates are within Ireland's bounds
-                            # Ireland approximate bounds: Lat 51.4-55.4, Lon -10.7 to -5.4
-                            if 51.4 <= lat <= 55.4 and -10.7 <= lon <= -5.4:
-                                return f"{lat}, {lon}"
-        
-        # Strategy 2: If OSM fails, use Eircode routing key to estimate location
-        # Eircode routing keys (first 3 chars) correspond to geographic areas
-        routing_key = eircode_str[:3]
-        
-        # Approximate center coordinates for major routing keys
-        routing_key_coords = {
-            # Dublin area
-            'D01': (53.3498, -6.2603), 'D02': (53.3441, -6.2675), 'D03': (53.3515, -6.2540),
-            'D04': (53.3308, -6.2419), 'D05': (53.3378, -6.2512), 'D06': (53.3278, -6.2597),
-            'D07': (53.3467, -6.2756), 'D08': (53.3425, -6.2812), 'D09': (53.3698, -6.2456),
-            'D10': (53.3345, -6.2934), 'D11': (53.3389, -6.3012), 'D12': (53.3156, -6.2789),
-            'D13': (53.3712, -6.1789), 'D14': (53.3234, -6.2234), 'D15': (53.3889, -6.3456),
-            'D16': (53.2978, -6.2123), 'D17': (53.3567, -6.1234), 'D18': (53.2789, -6.1567),
-            'D20': (53.4123, -6.3789), 'D22': (53.3456, -6.3912), 'D24': (53.2912, -6.3345),
-            
-            # Other major areas
-            'W23': (53.2189, -6.6756),  # Naas, Co. Kildare
-            'W12': (53.3456, -6.4567),  # Lucan
-            'W34': (53.5234, -7.3456),  # Athlone area
-            'A65': (53.4567, -7.8901),  # Longford area
-            'A42': (53.8901, -6.7234),  # Drogheda area
-            'A82': (54.0234, -6.4567),  # Dundalk area
-            'C15': (54.6789, -7.7234),  # Donegal area
-            'F12': (54.2345, -7.6789),  # Sligo area
-            'G12': (53.2678, -9.0123),  # Galway area
-            'H12': (52.6789, -8.6234),  # Limerick area
-            'K15': (52.8901, -9.5678),  # Kerry area
-            'P12': (51.8901, -8.4567),  # Cork area
-            'T12': (52.2345, -7.1234),  # Waterford area
-            'Y14': (52.7890, -7.5678),  # Wexford area
-        }
-        
-        if routing_key in routing_key_coords:
-            lat, lon = routing_key_coords[routing_key]
-            # Add small random offset to differentiate addresses in same area
-            lat_offset = random.uniform(-0.01, 0.01)
-            lon_offset = random.uniform(-0.01, 0.01)
-            return f"{lat + lat_offset}, {lon + lon_offset}"
-        
-        # If no match found, return empty
-        return ''
-    
-    except requests.exceptions.Timeout:
-        return ''
-    except requests.exceptions.ConnectionError:
-        return ''
+        query = eircode_formatted.replace(' ', '+') + '+Ireland'
+        results = _nominatim_search(query)
+        for result in results:
+            display_name = result.get('display_name', '').lower()
+            if 'ireland' in display_name and 'united kingdom' not in display_name:
+                lat = float(result.get('lat', 0))
+                lon = float(result.get('lon', 0))
+                # Ireland bounds: lat 51.4–55.4, lon -10.7 to -5.4
+                if 51.4 <= lat <= 55.4 and -10.7 <= lon <= -5.4:
+                    return f"{lat}, {lon}"
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        pass
     except Exception as e:
-        print(f"Error converting {eircode}: {str(e)}")
-        return ''
+        print(f"Error converting {eircode}: {e}")
+
+    # Fallback: routing-key centroid with small random offset
+    routing_key = eircode_str[:3]
+    if routing_key in ROUTING_KEY_COORDS:
+        lat, lon = ROUTING_KEY_COORDS[routing_key]
+        return f"{lat + random.uniform(-0.01, 0.01)}, {lon + random.uniform(-0.01, 0.01)}"
+
+    return ''
 
 
 def convert_eircode_batch(eircodes, delay=0.2):
@@ -389,25 +169,11 @@ def import_companies_from_excel(file_path):
                 if not company_name:
                     continue
                 
-                # Get coordinates and address from Eircode using Google Maps API
+                # Get coordinates from Eircode using Nominatim
                 latitude = None
                 longitude = None
-                google_address = None
-                
-                if eircode and gmaps_client:
-                    # Try to get full address and coordinates from Google Maps
-                    google_result = get_address_from_google(eircode)
-                    if google_result:
-                        latitude = google_result['lat']
-                        longitude = google_result['lon']
-                        google_address = google_result['address']
-                
-                # Use Google Maps address if no manual address provided
-                if not address and google_address:
-                    address = google_address
-                
-                # Fallback to old method if Google Maps didn't work
-                if (not latitude or not longitude) and eircode:
+
+                if eircode:
                     coords_str = convert_eircode_to_address(eircode)
                     if coords_str and ',' in coords_str:
                         parts = coords_str.split(',')
@@ -415,7 +181,7 @@ def import_companies_from_excel(file_path):
                             try:
                                 latitude = float(parts[0].strip())
                                 longitude = float(parts[1].strip())
-                            except:
+                            except Exception:
                                 pass
                 
                 # Insert or update record
@@ -438,10 +204,7 @@ def import_companies_from_excel(file_path):
                       preferred_school, preferred_area, contact_name, contact_email, status))
                 
                 imported_count += 1
-                
-                # Small delay to avoid overwhelming the geocoding API
-                time.sleep(0.1)
-                
+
             except Exception as e:
                 print(f"Error importing row {index}: {str(e)}")
                 continue

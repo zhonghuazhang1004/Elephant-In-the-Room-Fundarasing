@@ -5,10 +5,6 @@ Supports both local development and PythonAnywhere deployment via environment va
 """
 import os
 
-# Google Maps API Configuration
-# Priority: Environment Variable > Local Config > Default
-GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', "AIzaSyAC5xqPdp_6Ey87-ram1gZWM5L658yo-I4")
-
 # Database Configuration
 # For PythonAnywhere deployment, use absolute path from environment variable
 DATABASE_PATH = os.environ.get('DATABASE_PATH', "data/companies.db")
