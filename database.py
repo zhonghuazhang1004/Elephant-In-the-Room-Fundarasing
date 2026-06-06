@@ -50,8 +50,11 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS schools (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            roll_number TEXT UNIQUE,
             school_name TEXT NOT NULL,
+            eircode TEXT,
             address TEXT,
+            county TEXT,
             latitude REAL,
             longitude REAL,
             contact_info TEXT,
@@ -62,6 +65,19 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Migrate existing tables that may be missing new columns
+    for col, definition in [
+        ('roll_number', 'TEXT'),
+        ('eircode', 'TEXT'),
+        ('county', 'TEXT'),
+        ('latitude', 'REAL'),
+        ('longitude', 'REAL'),
+    ]:
+        try:
+            cursor.execute(f'ALTER TABLE schools ADD COLUMN {col} {definition}')
+        except Exception:
+            pass  # column already exists
     
     # Create team_files table for document management
     cursor.execute('''

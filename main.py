@@ -220,68 +220,112 @@ def import_companies_from_excel(file_path):
         return 0
 
 
+def _read_school_df(file_path):
+    """Read school Excel sheets (Mainstream + Special) into one DataFrame."""
+    frames = []
+    if file_path.endswith('.csv'):
+        frames.append(pd.read_csv(file_path))
+    else:
+        engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
+        xl = pd.ExcelFile(file_path, engine=engine)
+        for sheet in xl.sheet_names:
+            if sheet.lower() in ('mainstream schools', 'special schools'):
+                df = xl.parse(sheet, header=1)
+                if not df.empty:
+                    frames.append(df)
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
 def import_schools_from_excel(file_path):
     """
     Import school data from Excel file into SQLite database.
-    
-    Args:
-        file_path: Path to the Excel file
-    
+    Uses School Latitude/Longitude from the file directly; falls back to
+    Nominatim geocoding via convert_eircode_to_address() when missing.
+
     Returns:
         Number of records imported
     """
     try:
-        # Read Excel file
-        if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        else:
-            engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
-            df = pd.read_excel(file_path, engine=engine)
-        
+        df = _read_school_df(file_path)
         if df.empty:
             return 0
-        
+
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        
         imported_count = 0
-        
+
         for index, row in df.iterrows():
             try:
-                # Extract data - adjust column names based on your Excel structure
-                school_name = str(row.iloc[0]).strip() if len(row) > 0 else ''
-                
+                school_name = str(row.get('Official Name', '')).strip()
                 if not school_name or school_name == 'nan':
                     continue
-                
-                # Try to extract other fields dynamically
-                address = str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else None
-                contact_info = str(row.iloc[2]).strip() if len(row) > 2 and pd.notna(row.iloc[2]) else None
-                email = str(row.iloc[3]).strip() if len(row) > 3 and pd.notna(row.iloc[3]) else None
-                phone = str(row.iloc[4]).strip() if len(row) > 4 and pd.notna(row.iloc[4]) else None
-                
-                # Insert or update record
+
+                roll_number = str(row.get('Roll Number', '')).strip() or None
+                eircode = str(row.get('Eircode', '')).strip() if pd.notna(row.get('Eircode')) else None
+                county = str(row.get('County Description', '')).strip() if pd.notna(row.get('County Description')) else None
+                email = str(row.get('Email', '')).strip() if pd.notna(row.get('Email')) else None
+                phone = str(row.get('Phone No.', '')).strip() if pd.notna(row.get('Phone No.')) else None
+                contact_info = str(row.get('Principal Name', '')).strip() if pd.notna(row.get('Principal Name')) else None
+
+                # Build address from up to 4 address lines
+                addr_parts = [
+                    str(row.get(f'Address (Line {i})', '')).strip()
+                    for i in range(1, 5)
+                    if pd.notna(row.get(f'Address (Line {i})')) and str(row.get(f'Address (Line {i})', '')).strip() not in ('', 'nan')
+                ]
+                if county and county not in addr_parts:
+                    addr_parts.append(county)
+                if eircode:
+                    addr_parts.append(eircode)
+                address = ', '.join(addr_parts) or None
+
+                # Prefer coordinates already present in the file
+                latitude = float(row['School Latitude']) if pd.notna(row.get('School Latitude')) else None
+                longitude = float(row['School Longitude']) if pd.notna(row.get('School Longitude')) else None
+
+                # Fallback: geocode via Nominatim when coordinates are absent
+                if (latitude is None or longitude is None) and eircode:
+                    coords_str = convert_eircode_to_address(eircode)
+                    if coords_str and ',' in coords_str:
+                        parts = coords_str.split(',')
+                        try:
+                            latitude = float(parts[0].strip())
+                            longitude = float(parts[1].strip())
+                        except Exception:
+                            pass
+
                 cursor.execute('''
-                    INSERT INTO schools 
-                    (school_name, address, contact_info, email, phone)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT DO NOTHING
-                ''', (school_name, address, contact_info, email, phone))
-                
+                    INSERT INTO schools
+                    (roll_number, school_name, eircode, address, county,
+                     latitude, longitude, contact_info, email, phone)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(roll_number) DO UPDATE SET
+                        school_name  = excluded.school_name,
+                        eircode      = excluded.eircode,
+                        address      = excluded.address,
+                        county       = excluded.county,
+                        latitude     = excluded.latitude,
+                        longitude    = excluded.longitude,
+                        contact_info = excluded.contact_info,
+                        email        = excluded.email,
+                        phone        = excluded.phone,
+                        updated_at   = CURRENT_TIMESTAMP
+                ''', (roll_number, school_name, eircode, address, county,
+                      latitude, longitude, contact_info, email, phone))
+
                 imported_count += 1
-                
+
             except Exception as e:
-                print(f"Error importing school row {index}: {str(e)}")
+                print(f"Error importing school row {index}: {e}")
                 continue
-        
+
         conn.commit()
         conn.close()
-        
         print(f"✓ Successfully imported {imported_count} school records")
         return imported_count
-    
+
     except Exception as e:
-        print(f"Error importing schools from {file_path}: {str(e)}")
+        print(f"Error importing schools from {file_path}: {e}")
         return 0
 
 
@@ -310,26 +354,35 @@ def get_all_companies():
 
 
 def get_all_schools():
-    """
-    Get all schools from database.
-    
-    Returns:
-        List of school dictionaries
-    """
+    """Get all schools from database."""
     conn = database.get_db_connection()
     cursor = conn.cursor()
-    
     cursor.execute('''
-        SELECT id, school_name, address, contact_info, email, phone,
+        SELECT id, roll_number, school_name, eircode, address, county,
+               latitude, longitude, contact_info, email, phone,
                status, created_at
         FROM schools
-        ORDER BY created_at DESC
+        ORDER BY school_name ASC
     ''')
-    
     schools = [dict(row) for row in cursor.fetchall()]
     conn.close()
-    
     return schools
+
+
+def get_school_locations():
+    """Get all schools with valid coordinates for map display."""
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT id, school_name, eircode, address, county,
+               latitude, longitude, email, phone
+        FROM schools
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY school_name ASC
+    ''')
+    locations = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return locations
 
 
 def get_company_locations():
@@ -585,25 +638,36 @@ def school_information():
         
         # Get data from database
         schools = get_all_schools()
-        
+        school_locations = get_school_locations()
+
         if not schools:
-            return render_template('school.html', 
-                                 message='No school data found. Please add school Excel or CSV files to the "data" folder.')
-        
-        # Convert to DataFrame
+            return render_template('school.html',
+                                   message='No school data found. Please add school Excel or CSV files to the "data" folder.')
+
+        # Build table (drop internal cols like lat/lon/id)
         school_df = pd.DataFrame(schools)
-        school_df = school_df.fillna('')
-        
-        # Convert to HTML
+        display_cols = ['roll_number', 'school_name', 'eircode', 'address', 'county',
+                        'email', 'phone', 'contact_info', 'status']
+        existing_cols = [c for c in display_cols if c in school_df.columns]
+        school_df = school_df[existing_cols].fillna('')
         html_table = school_df.to_html(classes='data-table', index=False, escape=False)
-        
-        return render_template('school.html', 
-                             table=html_table, 
-                             total_rows=len(school_df))
-    
+
+        location_data = [
+            {'lat': loc['latitude'], 'lon': loc['longitude'],
+             'name': loc['school_name'], 'eircode': loc.get('eircode', '')}
+            for loc in school_locations
+            if loc.get('latitude') and loc.get('longitude')
+        ]
+
+        return render_template('school.html',
+                               table=html_table,
+                               total_rows=len(school_df),
+                               locations=location_data,
+                               has_locations=len(location_data) > 0)
+
     except Exception as e:
-        return render_template('school.html', 
-                             message=f'Error: {str(e)}')
+        return render_template('school.html',
+                               message=f'Error: {str(e)}')
 
 
 @app.route('/admin/import', methods=['GET', 'POST'])
