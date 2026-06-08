@@ -23,6 +23,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize database
 database.init_db()
+database.migrate_database()
 
 # Initialize Google Maps client if API key is configured
 gmaps_client = None
@@ -385,6 +386,7 @@ def import_companies_from_excel(file_path):
                 contact_name = str(row.get('Contact name', '')).strip() if pd.notna(row.get('Contact name')) else None
                 contact_email = str(row.get('Contact Email', '')).strip() if pd.notna(row.get('Contact Email')) else None
                 status = str(row.get('Status', 'pending')).strip() if pd.notna(row.get('Status')) else 'pending'
+                donation_amount = float(row.get('Donation Amount', 0)) if pd.notna(row.get('Donation Amount')) else 0
                 
                 if not company_name:
                     continue
@@ -422,8 +424,8 @@ def import_companies_from_excel(file_path):
                 cursor.execute('''
                     INSERT INTO companies 
                     (company_name, eircode, address, latitude, longitude, 
-                     preferred_school, preferred_area, contact_name, contact_email, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     preferred_school, preferred_area, contact_name, contact_email, status, donation_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(eircode, company_name) DO UPDATE SET
                         address = excluded.address,
                         latitude = excluded.latitude,
@@ -433,9 +435,10 @@ def import_companies_from_excel(file_path):
                         contact_name = excluded.contact_name,
                         contact_email = excluded.contact_email,
                         status = excluded.status,
+                        donation_amount = excluded.donation_amount,
                         updated_at = CURRENT_TIMESTAMP
                 ''', (company_name, eircode, address, latitude, longitude,
-                      preferred_school, preferred_area, contact_name, contact_email, status))
+                      preferred_school, preferred_area, contact_name, contact_email, status, donation_amount))
                 
                 imported_count += 1
                 
@@ -594,6 +597,127 @@ def get_company_locations():
     return locations
 
 
+def extract_county_from_address(address):
+    """
+    Extract county from address string.
+    Looks for patterns like 'Co. Dublin', 'County Cork', etc.
+    
+    Args:
+        address: Full address string
+    
+    Returns:
+        County name or 'Unknown' if not found
+    """
+    if not address:
+        return 'Unknown'
+    
+    address_lower = address.lower()
+    
+    # Common Irish counties
+    counties = [
+        'Dublin', 'Cork', 'Galway', 'Limerick', 'Waterford', 
+        'Kildare', 'Meath', 'Wicklow', 'Wexford', 'Kilkenny',
+        'Tipperary', 'Clare', 'Kerry', 'Laois', 'Offaly',
+        'Longford', 'Westmeath', 'Roscommon', 'Sligo', 'Leitrim',
+        'Mayo', 'Donegal', 'Monaghan', 'Cavan', 'Louth'
+    ]
+    
+    # Try to find "Co. XX" or "County XX" pattern
+    import re
+    co_pattern = r'(?:co\.?\s+|county\s+)(\w+)'
+    matches = re.findall(co_pattern, address_lower)
+    
+    if matches:
+        county_name = matches[-1].capitalize()
+        # Check if it's a known county
+        for county in counties:
+            if county.lower() == county_name.lower():
+                return county
+        return county_name
+    
+    # Fallback: check if any county name appears in address
+    for county in counties:
+        if county.lower() in address_lower:
+            return county
+    
+    return 'Other'
+
+
+def get_matched_companies_and_schools_by_county():
+    """
+    Get matched companies and schools grouped by county with donation amounts.
+    
+    Returns:
+        Dictionary with county as key and list of matches as value
+    """
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get all active companies with donations
+    cursor.execute('''
+        SELECT id, company_name, address, preferred_school, 
+               donation_amount, status
+        FROM companies
+        WHERE status = 'active' AND donation_amount > 0
+        ORDER BY company_name
+    ''')
+    
+    companies = [dict(row) for row in cursor.fetchall()]
+    
+    # Group by county
+    county_data = {}
+    
+    for company in companies:
+        county = extract_county_from_address(company.get('address'))
+        
+        if county not in county_data:
+            county_data[county] = {
+                'county': county,
+                'matches': [],
+                'total_donations': 0,
+                'company_count': 0,
+                'school_count': 0
+            }
+        
+        # Find matching school if specified
+        school_info = None
+        preferred_school = company.get('preferred_school')
+        
+        if preferred_school:
+            cursor.execute('''
+                SELECT school_name, address, donation_received
+                FROM schools
+                WHERE school_name LIKE ?
+                LIMIT 1
+            ''', (f'%{preferred_school}%',))
+            
+            school_row = cursor.fetchone()
+            if school_row:
+                school_info = dict(school_row)
+        
+        match_entry = {
+            'company_name': company['company_name'],
+            'company_address': company.get('address', ''),
+            'donation_amount': company.get('donation_amount', 0),
+            'preferred_school': preferred_school,
+            'school_info': school_info
+        }
+        
+        county_data[county]['matches'].append(match_entry)
+        county_data[county]['total_donations'] += company.get('donation_amount', 0)
+        county_data[county]['company_count'] += 1
+        
+        if school_info:
+            county_data[county]['school_count'] += 1
+    
+    conn.close()
+    
+    # Convert to sorted list
+    result = sorted(county_data.values(), key=lambda x: x['total_donations'], reverse=True)
+    
+    return result
+
+
 @app.route('/')
 def welcome():
     """Welcome page with database statistics"""
@@ -606,12 +730,22 @@ def welcome():
         active_count = sum(1 for c in companies if c.get('status') == 'active')
         active_schools = sum(1 for s in schools if s.get('status') == 'active')
         
+        # Count engaged corps and schools (those with donations > 0)
+        engaged_corps_count = sum(1 for c in companies if c.get('status') == 'active' and c.get('donation_amount', 0) > 0)
+        engaged_schools_count = sum(1 for s in schools if s.get('status') == 'active' and s.get('donation_received', 0) > 0)
+        
+        # Get matched companies and schools by county
+        county_matches = get_matched_companies_and_schools_by_county()
+        
         return render_template('welcome.html', 
                              company_count=len(companies),
                              school_count=len(schools),
                              location_count=len(locations),
                              active_count=active_count,
-                             active_schools=active_schools)
+                             active_schools=active_schools,
+                             engaged_corps_count=engaged_corps_count,
+                             engaged_schools_count=engaged_schools_count,
+                             county_matches=county_matches)
     
     except Exception as e:
         return render_template('welcome.html', 
@@ -620,6 +754,9 @@ def welcome():
                              location_count=0,
                              active_count=0,
                              active_schools=0,
+                             engaged_corps_count=0,
+                             engaged_schools_count=0,
+                             county_matches=[],
                              message=f'Error loading data: {str(e)}')
 
 
@@ -1080,6 +1217,38 @@ def clear_database():
                              message=f'✗ Error clearing database: {str(e)}',
                              success=False,
                              **get_admin_stats())
+
+
+@app.route('/admin/companies/delete_all', methods=['POST'])
+def delete_all_companies():
+    """Delete all companies from database"""
+    try:
+        conn = database.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM companies')
+        conn.commit()
+        conn.close()
+        
+        return redirect(url_for('admin_panel', message='✓ All companies deleted successfully!', success=True))
+    
+    except Exception as e:
+        return redirect(url_for('admin_panel', message=f'✗ Error deleting companies: {str(e)}', success=False))
+
+
+@app.route('/admin/schools/delete_all', methods=['POST'])
+def delete_all_schools():
+    """Delete all schools from database"""
+    try:
+        conn = database.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM schools')
+        conn.commit()
+        conn.close()
+        
+        return redirect(url_for('admin_panel', message='✓ All schools deleted successfully!', success=True))
+    
+    except Exception as e:
+        return redirect(url_for('admin_panel', message=f'✗ Error deleting schools: {str(e)}', success=False))
 
 
 # ==================== Team Files Management ====================
