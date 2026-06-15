@@ -318,77 +318,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* Quick Actions Section */
-        .quick-actions {
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        }
-
-        .actions-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .actions-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1a1a1a;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 14px 28px;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: #36943b;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2d7a32;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(54, 148, 59, 0.3);
-        }
-
-        .btn-secondary {
-            background: #f5f7fa;
-            color: #36943b;
-            border: 2px solid #36943b;
-        }
-
-        .btn-secondary:hover {
-            background: #36943b;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .message-box {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            padding: 20px;
-            border-radius: 8px;
-            color: #155724;
-            margin-bottom: 30px;
-        }
-
         /* Footer */
         .footer {
             background: #1a1a1a;
@@ -657,6 +586,33 @@
             font-size: 18px;
             margin-bottom: 10px;
         }
+
+        /* Leaflet Map Styles */
+        .leaflet-map {
+            position: relative;
+            z-index: 1;
+            width: 100% !important;
+            min-width: 100%;
+        }
+
+        #map {
+            width: 100% !important;
+            height: 600px !important;
+            min-height: 600px;
+            background: #ddd;
+            display: block !important;
+        }
+
+        .leaflet-container {
+            width: 100% !important;
+            height: 600px !important;
+            background: #ddd;
+        }
+
+        .map-container {
+            overflow: hidden;
+            width: 100% !important;
+        }
     </style>
 </head>
 
@@ -672,9 +628,10 @@
                 </div>
             </a>
             <ul class="navbar-menu">
-                <li class="navbar-item active"><a href="/">Homepage</a></li>
+                <li class="navbar-item active"><a href="/">Home Page</a></li>
                 <li class="navbar-item"><a href="/company">Company Info</a></li>
                 <li class="navbar-item"><a href="/school">School Info</a></li>
+                <li class="navbar-item"><a href="/reference">Reference</a></li>
                 <li class="navbar-item"><a href="/admin">Admin</a></li>
             </ul>
         </div>
@@ -685,7 +642,7 @@
         <div class="hero-container">
             <div class="hero-header-row">
                 <h1 class="hero-title">Fundraising Dashboard</h1>
-                
+
                 <!-- Engagement Statistics - Same Row as Title -->
                 <div class="engagement-stats-inline">
                     <div class="engagement-mini-card">
@@ -716,7 +673,7 @@
                     <h2 class="county-title"> Matched Companies & Schools by County</h2>
                     <span class="county-badge">{{ county_matches|length }} Counties</span>
                 </div>
-                
+
                 <div class="quick-stats">
                     <div class="quick-stat-card">
                         <div class="quick-stat-icon">🏢</div>
@@ -805,87 +762,25 @@
     </div>
     {% endif %}
 
-    <!-- Main Content -->
+    <!-- Map Section -->
     <div class="main-content">
-        <!-- Action Cards -->
         <div class="section-header">
-            <h2 class="section-title">Quick Access</h2>
-            <p class="section-description">Manage your fundraising activities and data</p>
+            <h2 class="section-title">Geographic Overview</h2>
+            <p class="section-description">Interactive map showing company and school locations across Ireland</p>
         </div>
 
-        <div class="action-grid">
-            <!-- Company Information Card -->
-            <a href="/company" class="action-card">
-                <div class="card-icon">🏢</div>
-                <h3 class="card-title">Company Information</h3>
-                <p class="card-description">
-                    View detailed information about partner companies, including contact details,
-                    preferred schools, and geographic distribution across Ireland.
-                </p>
-                <div class="card-stats">
-                    <div class="card-stat">
-                        <div class="card-stat-value">{{ company_count | default(0) }}</div>
-                        <div class="card-stat-label">Companies</div>
-                    </div>
-                    <div class="card-stat">
-                        <div class="card-stat-value">{{ location_count | default(0) }}</div>
-                        <div class="card-stat-label">Locations</div>
-                    </div>
+        <div class="map-wrapper" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); overflow: hidden;">
+            <div id="map" class="leaflet-map" style="height: 600px; width: 100% !important; min-width: 100%; border-radius: 8px;"></div>
+            
+            <div style="margin-top: 20px; display: flex; gap: 30px; justify-content: center; padding: 0 30px 30px 30px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: #4CAF50; border-radius: 50%;"></div>
+                    <span style="font-size: 14px; color: #666;">Companies ({{ company_locations|length }})</span>
                 </div>
-            </a>
-
-            <!-- School Information Card -->
-            <a href="/school" class="action-card">
-                <div class="card-icon">🎓</div>
-                <h3 class="card-title">School Information</h3>
-                <p class="card-description">
-                    Access comprehensive data on participating schools, their contact information,
-                    and partnership status with fundraising companies.
-                </p>
-                <div class="card-stats">
-                    <div class="card-stat">
-                        <div class="card-stat-value">{{ school_count | default(0) }}</div>
-                        <div class="card-stat-label">Schools</div>
-                    </div>
-                    <div class="card-stat">
-                        <div class="card-stat-value">{{ active_schools | default(0) }}</div>
-                        <div class="card-stat-label">Active</div>
-                    </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: #FF5252; border-radius: 50%;"></div>
+                    <span style="font-size: 14px; color: #666;">Schools ({{ school_locations|length }})</span>
                 </div>
-            </a>
-
-            <!-- Admin Panel Card -->
-            <a href="/admin" class="action-card">
-                <div class="card-icon">⚙️</div>
-                <h3 class="card-title">Admin Panel</h3>
-                <p class="card-description">
-                    Manage database records, import new data from Excel files, add or edit
-                    company and school information through an intuitive web interface.
-                </p>
-                <div class="card-stats">
-                    <div class="card-stat">
-                        <div class="card-stat-value">CRUD</div>
-                        <div class="card-stat-label">Operations</div>
-                    </div>
-                    <div class="card-stat">
-                        <div class="card-stat-value">Import</div>
-                        <div class="card-stat-label">Excel Files</div>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <div class="actions-header">
-                <h3 class="actions-title">Quick Actions</h3>
-            </div>
-            <div class="button-group">
-                <form method="POST" action="/admin/import" style="display: inline;">
-                    <button type="submit" class="btn btn-primary">🔄 Re-import Data from Excel</button>
-                </form>
-                <a href="/company" class="btn btn-secondary">📊 View Company Map</a>
-                <a href="/admin" class="btn btn-secondary">➕ Add New Record</a>
             </div>
         </div>
     </div>
@@ -903,10 +798,260 @@
                 <a href="/" class="footer-link">Dashboard</a>
                 <a href="/company" class="footer-link">Companies</a>
                 <a href="/school" class="footer-link">Schools</a>
+                <a href="/reference" class="footer-link">Reference</a>
                 <a href="/admin" class="footer-link">Admin</a>
             </div>
         </div>
     </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        console.log('🗺️ Leaflet loaded:', typeof L !== 'undefined');
+        
+        // Simple and reliable map initialization
+        var mapInitialized = false;
+        
+        function initMap() {
+            if (mapInitialized) {
+                console.log('️ Map already initialized, skipping...');
+                return;
+            }
+            
+            console.log('🔧 Starting map initialization...');
+            
+            var mapElement = document.getElementById('map');
+            if (!mapElement) {
+                console.error('❌ Map element not found!');
+                return;
+            }
+            
+            console.log('✅ Map element found:', mapElement);
+            console.log('📏 Element dimensions before:', mapElement.offsetWidth, 'x', mapElement.offsetHeight);
+            
+            // Force container to have dimensions
+            mapElement.style.width = '100%';
+            mapElement.style.height = '600px';
+            mapElement.style.display = 'block';
+            mapElement.style.position = 'relative';
+            
+            console.log(' Element dimensions after force:', mapElement.offsetWidth, 'x', mapElement.offsetHeight);
+            
+            try {
+                console.log('🗺️ Creating Leaflet map...');
+                
+                var map = L.map('map', {
+                    zoomControl: true,
+                    scrollWheelZoom: true,
+                    attributionControl: true
+                });
+                
+                console.log('✅ Leaflet map created');
+                
+                var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 19,
+                    minZoom: 5,
+                    keepBuffer: 2,
+                    updateWhenIdle: false,
+                    updateWhenZooming: true
+                }).addTo(map);
+                
+                console.log('✅ Tile layer added with standard OSM tiles');
+                
+                // Force set Leaflet internal container styles immediately
+                var leafletContainer = map.getContainer();
+                if (leafletContainer) {
+                    leafletContainer.style.width = '100%';
+                    leafletContainer.style.height = '600px';
+                    leafletContainer.style.position = 'relative';
+                    console.log('✅ Leaflet internal container styles forced');
+                }
+                
+                // Set initial view
+                map.setView([53.3498, -6.2603], 7);
+                console.log('✅ Initial view set to Ireland');
+                
+                // Get location data from backend
+                var companyLocations = {{ company_locations | tojson }};
+                var schoolLocations = {{ school_locations | tojson }};
+                
+                console.log('📊 Company locations:', companyLocations);
+                console.log('📊 School locations:', schoolLocations);
+                console.log(' Total markers expected:', (companyLocations ? companyLocations.length : 0) + (schoolLocations ? schoolLocations.length : 0));
+                
+                var markers = [];
+                
+                // Define colored icons
+                var companyIcon = L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+                
+                var schoolIcon = L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+                
+                // Add company markers
+                if (companyLocations && companyLocations.length > 0) {
+                    console.log(' Adding', companyLocations.length, 'company markers...');
+                    companyLocations.forEach(function (loc) {
+                        if (loc && loc.lat && loc.lon) {
+                            var marker = L.marker([loc.lat, loc.lon], { icon: companyIcon }).addTo(map);
+                            markers.push(marker);
+                            
+                            var popupContent = '<div style="min-width: 200px;">' +
+                                '<strong style="color: #36943b; font-size: 14px;"> Company</strong><br>' +
+                                '<strong style="font-size: 13px;">' + (loc.name || 'Company') + '</strong><br>';
+                            if (loc.eircode) {
+                                popupContent += '<span style="font-size: 12px; color: #666;">Eircode: ' + loc.eircode + '</span><br>';
+                            }
+                            popupContent += '<span style="font-size: 12px; color: #666;">Lat: ' + loc.lat.toFixed(4) + ', Lon: ' + loc.lon.toFixed(4) + '</span>' +
+                                '</div>';
+                            
+                            marker.bindPopup(popupContent);
+                        }
+                    });
+                    console.log('✅ Company markers added');
+                } else {
+                    console.log('ℹ️ No company locations to display');
+                }
+                
+                // Add school markers
+                if (schoolLocations && schoolLocations.length > 0) {
+                    console.log('🏫 Adding', schoolLocations.length, 'school markers...');
+                    schoolLocations.forEach(function (loc) {
+                        if (loc && loc.lat && loc.lon) {
+                            var marker = L.marker([loc.lat, loc.lon], { icon: schoolIcon }).addTo(map);
+                            markers.push(marker);
+                            
+                            var popupContent = '<div style="min-width: 200px;">' +
+                                '<strong style="color: #ff6b6b; font-size: 14px;"> School</strong><br>' +
+                                '<strong style="font-size: 13px;">' + (loc.name || 'School') + '</strong><br>';
+                            if (loc.address) {
+                                popupContent += '<span style="font-size: 12px; color: #666;">' + loc.address + '</span><br>';
+                            }
+                            popupContent += '<span style="font-size: 12px; color: #666;">Lat: ' + loc.lat.toFixed(4) + ', Lon: ' + loc.lon.toFixed(4) + '</span>' +
+                                '</div>';
+                            
+                            marker.bindPopup(popupContent);
+                        }
+                    });
+                    console.log('✅ School markers added');
+                } else {
+                    console.log('ℹ️ No school locations to display');
+                }
+                
+                // Fit bounds or set default view
+                if (markers.length > 0) {
+                    console.log('🎯 Fitting map to', markers.length, 'markers...');
+                    var group = L.featureGroup(markers);
+                    map.fitBounds(group.getBounds().pad(0.1));
+                    console.log('✅ Map fitted to markers');
+                } else {
+                    console.log('ℹ️ No markers, keeping default Ireland view');
+                    map.setView([53.3498, -6.2603], 7);
+                }
+                
+                // Force invalidate size multiple times
+                setTimeout(function() { 
+                    map.invalidateSize(); 
+                    console.log(' invalidateSize() called at 100ms');
+                }, 100);
+                setTimeout(function() { 
+                    map.invalidateSize(); 
+                    console.log(' invalidateSize() called at 300ms');
+                }, 300);
+                setTimeout(function() { 
+                    map.invalidateSize(); 
+                    console.log('🔄 invalidateSize() called at 500ms');
+                }, 500);
+                setTimeout(function() { 
+                    map.invalidateSize(); 
+                    console.log('🔄 invalidateSize() called at 1000ms');
+                }, 1000);
+                
+                // Force redraw tiles after fitBounds
+                setTimeout(function() {
+                    tileLayer.redraw();
+                    console.log(' Tile layer redraw after fitBounds');
+                }, 50);
+                
+                // Use ResizeObserver to continuously monitor container size changes
+                if (typeof ResizeObserver !== 'undefined') {
+                    var resizeObserver = new ResizeObserver(function(entries) {
+                        for (var entry of entries) {
+                            if (entry.target === mapElement) {
+                                map.invalidateSize();
+                                tileLayer.redraw();
+                                console.log('🔄 Container resized, invalidated map size and redrawn tiles');
+                            }
+                        }
+                    });
+                    resizeObserver.observe(mapElement);
+                    console.log('✅ ResizeObserver attached to map container');
+                }
+                
+                // Additional safeguard: Periodically check and fix map rendering
+                var mapCheckInterval = setInterval(function() {
+                    if (!map || !tileLayer) return;
+                    
+                    var containerRect = mapElement.getBoundingClientRect();
+                    if (containerRect.width < 100 || containerRect.height < 100) {
+                        console.warn('⚠️ Map container too small, forcing refresh...');
+                        map.invalidateSize();
+                        tileLayer.redraw();
+                    }
+                }, 2000);
+                
+                // Stop checking after 30 seconds
+                setTimeout(function() {
+                    clearInterval(mapCheckInterval);
+                    console.log('✅ Map stability check stopped');
+                }, 30000);
+                
+                mapInitialized = true;
+                console.log('✅✅✅ MAP INITIALIZATION COMPLETE ✅✅✅');
+                console.log('Total markers:', markers.length);
+                console.log('Map center:', map.getCenter());
+                console.log('Map zoom:', map.getZoom());
+                
+            } catch (error) {
+                console.error('❌❌ ERROR INITIALIZING MAP ❌❌❌');
+                console.error('Error:', error);
+                console.error('Stack:', error.stack);
+            }
+        }
+        
+        // Initialize when page is fully loaded
+        console.log(' Document readyState:', document.readyState);
+        
+        if (document.readyState === 'loading') {
+            console.log('⏳ Waiting for DOMContentLoaded...');
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('✅ DOMContentLoaded fired');
+                window.addEventListener('load', function() {
+                    console.log('✅ Window load fired');
+                    setTimeout(initMap, 100);
+                });
+            });
+        } else {
+            console.log('✅ Document already loaded');
+            window.addEventListener('load', function() {
+                console.log('✅ Window load fired');
+                setTimeout(initMap, 100);
+            });
+        }
+    </script>
+
 </body>
 
 </html>

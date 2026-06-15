@@ -105,7 +105,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 60px 40px;
             display: flex;
             gap: 30px;
         }
@@ -298,6 +298,87 @@
             box-shadow: 0 4px 15px rgba(54, 148, 59, 0.3);
         }
 
+        /* File Preview Styles */
+        .file-preview {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8faf8;
+            border: 2px solid #36943b;
+            border-radius: 8px;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #36943b;
+        }
+
+        .btn-remove-preview {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .btn-remove-preview:hover {
+            background: #ffebee;
+            color: #f44336;
+        }
+
+        .preview-content {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .preview-filename {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .preview-filesize {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
         .file-list {
             margin-top: 15px;
         }
@@ -416,7 +497,7 @@
                 </div>
             </a>
             <ul class="navbar-menu">
-                <li class="navbar-item"><a href="/">Homepage</a></li>
+                <li class="navbar-item"><a href="/">Home Page</a></li>
                 <li class="navbar-item"><a href="/company">Company Info</a></li>
                 <li class="navbar-item"><a href="/school">School Info</a></li>
                 <li class="navbar-item active"><a href="/admin">Admin</a></li>
@@ -473,10 +554,17 @@
                 <div class="upload-section">
                     <form action="/team-files/upload/{{ member.id }}" method="POST" enctype="multipart/form-data" class="upload-form">
                         <div class="file-input-wrapper">
-                            <input type="file" name="file" id="file-{{ member.id }}" required>
+                            <input type="file" name="file" id="file-{{ member.id }}" required onchange="previewFile(this, {{ member.id }})">
                             <label for="file-{{ member.id }}" class="file-input-label">
                                 📎 Choose file to upload
                             </label>
+                        </div>
+                        <div id="preview-{{ member.id }}" class="file-preview" style="display: none;">
+                            <div class="preview-header">
+                                <span class="preview-title">📄 File Preview</span>
+                                <button type="button" class="btn-remove-preview" onclick="removePreview({{ member.id }})">✕</button>
+                            </div>
+                            <div class="preview-content" id="preview-content-{{ member.id }}"></div>
                         </div>
                         <button type="submit" class="btn-upload">Upload File</button>
                     </form>
@@ -522,5 +610,51 @@
         </div>
         </div> <!-- Close main-content -->
     </div> <!-- Close container -->
+
+    <script>
+        function previewFile(input, memberId) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const previewDiv = document.getElementById(`preview-${memberId}`);
+            const previewContent = document.getElementById(`preview-content-${memberId}`);
+            
+            // Format file size
+            const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+            
+            // Create preview content
+            let previewHTML = `
+                <div class="preview-filename">📄 ${file.name}</div>
+                <div class="preview-filesize">${fileSize}</div>
+            `;
+            
+            // If it's an image, show preview
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewHTML += `<img src="${e.target.result}" class="preview-image" alt="Preview">`;
+                    previewContent.innerHTML = previewHTML;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // For other files, just show info
+                previewContent.innerHTML = previewHTML;
+            }
+            
+            // Show preview div
+            previewDiv.style.display = 'block';
+        }
+
+        function removePreview(memberId) {
+            const input = document.getElementById(`file-${memberId}`);
+            const previewDiv = document.getElementById(`preview-${memberId}`);
+            
+            // Clear the file input
+            input.value = '';
+            
+            // Hide preview
+            previewDiv.style.display = 'none';
+        }
+    </script>
 </body>
 </html>

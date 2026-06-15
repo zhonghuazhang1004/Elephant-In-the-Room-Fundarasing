@@ -500,15 +500,77 @@ def import_schools_from_excel(file_path):
                 email = str(row.iloc[3]).strip() if len(row) > 3 and pd.notna(row.iloc[3]) else None
                 phone = str(row.iloc[4]).strip() if len(row) > 4 and pd.notna(row.iloc[4]) else None
                 
+                # Get coordinates from address using Google Maps API
+                latitude = None
+                longitude = None
+                
+                # The 'address' field might actually be an Eircode
+                eircode_or_address = address
+                
+                if eircode_or_address and gmaps_client:
+                    # Try multiple approaches to get coordinates
+                    
+                    # Approach 1: If it looks like an Eircode (7 chars, format XXX XXXX)
+                    is_eircode = False
+                    if len(eircode_or_address.replace(' ', '')) == 7:
+                        # Looks like an Eircode
+                        eircode_formatted = eircode_or_address.strip().upper()
+                        if ' ' not in eircode_formatted and len(eircode_formatted) == 7:
+                            eircode_formatted = eircode_formatted[:3] + ' ' + eircode_formatted[3:]
+                        
+                        try:
+                            result = gmaps_client.geocode(eircode_formatted + ', Ireland')
+                            if result and len(result) > 0:
+                                location = result[0]['geometry']['location']
+                                lat = location['lat']
+                                lng = location['lng']
+                                
+                                # Verify it's in Ireland
+                                if 51.4 <= lat <= 55.4 and -10.7 <= lng <= -5.4:
+                                    latitude = lat
+                                    longitude = lng
+                                    is_eircode = True
+                                    print(f"✓ Geocoded {school_name} (Eircode): {lat:.4f}, {lng:.4f}")
+                        except Exception as geo_error:
+                            print(f"Geocoding error for {school_name} (Eircode): {geo_error}")
+                    
+                    # Approach 2: If not an Eircode, try school name + address
+                    if not is_eircode:
+                        search_query = f"{school_name}, {eircode_or_address}, Ireland"
+                        try:
+                            result = gmaps_client.geocode(search_query)
+                            if result and len(result) > 0:
+                                location = result[0]['geometry']['location']
+                                lat = location['lat']
+                                lng = location['lng']
+                                
+                                # Verify it's in Ireland
+                                if 51.4 <= lat <= 55.4 and -10.7 <= lng <= -5.4:
+                                    latitude = lat
+                                    longitude = lng
+                                    print(f"✓ Geocoded {school_name} (Address): {lat:.4f}, {lng:.4f}")
+                        except Exception as geo_error:
+                            print(f"Geocoding error for {school_name} (Address): {geo_error}")
+                
                 # Insert or update record
                 cursor.execute('''
                     INSERT INTO schools 
-                    (school_name, address, contact_info, email, phone)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT DO NOTHING
-                ''', (school_name, address, contact_info, email, phone))
+                    (school_name, address, contact_info, email, phone, latitude, longitude)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(school_name) DO UPDATE SET
+                        address = excluded.address,
+                        contact_info = excluded.contact_info,
+                        email = excluded.email,
+                        phone = excluded.phone,
+                        latitude = excluded.latitude,
+                        longitude = excluded.longitude,
+                        updated_at = CURRENT_TIMESTAMP
+                ''', (school_name, address, contact_info, email, phone, latitude, longitude))
                 
                 imported_count += 1
+                
+                # Small delay to avoid overwhelming the geocoding API
+                time.sleep(0.1)
                 
             except Exception as e:
                 print(f"Error importing school row {index}: {str(e)}")
@@ -737,6 +799,32 @@ def welcome():
         # Get matched companies and schools by county
         county_matches = get_matched_companies_and_schools_by_county()
         
+        # Get company and school locations for map
+        company_locations = []
+        for loc in locations:
+            if loc.get('latitude') and loc.get('longitude'):
+                company_locations.append({
+                    'name': loc.get('company_name', ''),
+                    'lat': float(loc.get('latitude')),
+                    'lon': float(loc.get('longitude')),
+                    'eircode': loc.get('eircode', '')
+                })
+        
+        school_locations = []
+        for school in schools:
+            if school.get('latitude') and school.get('longitude'):
+                school_locations.append({
+                    'name': school.get('school_name', ''),
+                    'lat': float(school.get('latitude')),
+                    'lon': float(school.get('longitude')),
+                    'address': school.get('address', '')
+                })
+        
+        print(f"DEBUG: Company locations count: {len(company_locations)}")
+        print(f"DEBUG: School locations count: {len(school_locations)}")
+        print(f"DEBUG: Total locations from DB: {len(locations)}")
+        print(f"DEBUG: Sample company location: {company_locations[0] if company_locations else 'None'}")
+        
         return render_template('welcome.html', 
                              company_count=len(companies),
                              school_count=len(schools),
@@ -745,7 +833,9 @@ def welcome():
                              active_schools=active_schools,
                              engaged_corps_count=engaged_corps_count,
                              engaged_schools_count=engaged_schools_count,
-                             county_matches=county_matches)
+                             county_matches=county_matches,
+                             company_locations=company_locations,
+                             school_locations=school_locations)
     
     except Exception as e:
         return render_template('welcome.html', 
@@ -757,7 +847,25 @@ def welcome():
                              engaged_corps_count=0,
                              engaged_schools_count=0,
                              county_matches=[],
+                             company_locations=[],
+                             school_locations=[],
                              message=f'Error loading data: {str(e)}')
+
+
+@app.route('/reference')
+def reference():
+    """Reference page with team member files"""
+    try:
+        # Get all team files
+        team_files_list = get_all_team_files()
+        
+        return render_template('reference.html', 
+                             team_files=team_files_list)
+    
+    except Exception as e:
+        return render_template('reference.html', 
+                             team_files=[],
+                             message=f'Error loading files: {str(e)}')
 
 
 @app.route('/eircode')
@@ -845,7 +953,7 @@ def eircode_viewer():
 
 @app.route('/company')
 def company_information():
-    """Company Information page with map visualization"""
+    """Company Information page with map visualization - merged with schools"""
     try:
         # Get all Excel/CSV files from the data folder
         excel_files = glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.xlsx'))
@@ -872,12 +980,15 @@ def company_information():
         
         # Get data from database
         companies = get_all_companies()
+        schools = get_all_schools()
         company_locations = get_company_locations()
         
         # Convert company data to DataFrame for HTML table
         company_df = None
         company_location_data = []
+        school_location_data = []
         company_total_rows = len(companies)
+        school_total_rows = len(schools)
         
         if companies:
             # Create DataFrame from database records
@@ -915,24 +1026,48 @@ def company_information():
             company_df = company_df[existing_columns]
             company_df = company_df.fillna('')
             
-            # Extract location data for map
+            # Extract location data for map (companies)
             for loc in company_locations:
                 if loc.get('latitude') and loc.get('longitude'):
                     company_location_data.append({
                         'lat': loc['latitude'],
-                        'lon': loc['longitude']
+                        'lon': loc['longitude'],
+                        'name': loc.get('company_name', ''),
+                        'type': 'company'
                     })
                 else:
                     company_location_data.append(None)
         
+        # Extract school location data
+        if schools:
+            for school in schools:
+                if school.get('latitude') and school.get('longitude'):
+                    school_location_data.append({
+                        'lat': school['latitude'],
+                        'lon': school['longitude'],
+                        'name': school.get('school_name', ''),
+                        'type': 'school'
+                    })
+        
         # Convert to HTML
         company_html = company_df.to_html(classes='data-table', index=False, escape=False) if company_df is not None else ''
         
+        # Also prepare school table
+        school_df = None
+        school_html = ''
+        if schools:
+            school_df = pd.DataFrame(schools)
+            school_df = school_df.fillna('')
+            school_html = school_df.to_html(classes='data-table', index=False, escape=False)
+        
         return render_template('company.html', 
                              company_table=company_html,
+                             school_table=school_html,
                              company_total_rows=company_total_rows,
+                             school_total_rows=school_total_rows,
                              has_addresses=len(company_location_data) > 0,
-                             locations=company_location_data)
+                             company_locations=company_location_data,
+                             school_locations=school_location_data)
     
     except Exception as e:
         return render_template('company.html', 
@@ -1025,12 +1160,16 @@ def get_admin_stats():
     schools = get_all_schools()
     locations = get_company_locations()
     
+    # Get all team files
+    team_files_list = get_all_team_files()
+    
     return {
         'companies': companies,
         'schools': schools,
         'company_count': len(companies),
         'school_count': len(schools),
-        'location_count': len(locations)
+        'location_count': len(locations),
+        'team_files': team_files_list
     }
 
 
@@ -1038,6 +1177,12 @@ def get_admin_stats():
 def admin_dashboard():
     """Admin dashboard for database management"""
     return render_template('admin.html', **get_admin_stats())
+
+
+@app.route('/admin/files')
+def admin_files():
+    """Admin Team Files management page"""
+    return render_template('admin_files.html', **get_admin_stats())
 
 
 @app.route('/admin/company/save', methods=['POST'])
@@ -1260,8 +1405,8 @@ def allowed_file(filename):
 
 def get_team_members():
     """Get all team members with their files"""
-    # Define 5 team members
-    member_names = ['Team Member 1', 'Team Member 2', 'Team Member 3', 'Team Member 4', 'Team Member 5']
+    # Define 7 team members
+    member_names = ['Barrett,Leanne', 'Adams,Conor', 'Harevice,Anzelina', 'Mcmorrow,Maeve', "O'Donoghue,Fergus", 'Podynihlazov,Oleksandr', 'Zhonghua,Zhang']
     
     conn = database.get_db_connection()
     cursor = conn.cursor()
@@ -1287,6 +1432,26 @@ def get_team_members():
     return team_members
 
 
+def get_all_team_files():
+    """Get all team files from database"""
+    try:
+        conn = database.get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, member_name, filename, original_filename, file_path, file_size, file_type, uploaded_at
+            FROM team_files
+            ORDER BY uploaded_at DESC
+        ''')
+        
+        files = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return files
+    except Exception as e:
+        print(f"Error getting team files: {e}")
+        return []
+
+
 @app.route('/team-files')
 def team_files():
     """Team files management page"""
@@ -1299,27 +1464,24 @@ def team_files():
                              error=f'Error loading files: {str(e)}')
 
 
-@app.route('/team-files/upload/<int:member_id>', methods=['POST'])
-def upload_file(member_id):
-    """Upload a file for a team member"""
+@app.route('/team-files/upload', methods=['POST'])
+def upload_file():
+    """Upload a file for a team member (from admin panel)"""
     try:
         if 'file' not in request.files:
-            return redirect(url_for('team_files', error='No file selected'))
+            return redirect(url_for('admin_dashboard', error='No file selected'))
         
         file = request.files['file']
+        member_name = request.form.get('member_name')
         
         if file.filename == '':
-            return redirect(url_for('team_files', error='No file selected'))
+            return redirect(url_for('admin_dashboard', error='No file selected'))
+        
+        if not member_name:
+            return redirect(url_for('admin_dashboard', error='Please select a team member'))
         
         if not allowed_file(file.filename):
-            return redirect(url_for('team_files', error='File type not allowed'))
-        
-        # Get member name
-        member_names = ['Team Member 1', 'Team Member 2', 'Team Member 3', 'Team Member 4', 'Team Member 5']
-        if member_id < 1 or member_id > len(member_names):
-            return redirect(url_for('team_files', error='Invalid team member'))
-        
-        member_name = member_names[member_id - 1]
+            return redirect(url_for('admin_dashboard', error='File type not allowed'))
         
         # Secure the filename and save file
         original_filename = secure_filename(file.filename)
@@ -1344,10 +1506,10 @@ def upload_file(member_id):
         conn.commit()
         conn.close()
         
-        return redirect(url_for('team_files', message=f'✓ File "{original_filename}" uploaded successfully!'))
+        return redirect(url_for('admin_dashboard', message=f'✓ File "{original_filename}" uploaded successfully!'))
     
     except Exception as e:
-        return redirect(url_for('team_files', error=f'Error uploading file: {str(e)}'))
+        return redirect(url_for('admin_dashboard', error=f'Error uploading file: {str(e)}'))
 
 
 @app.route('/team-files/download/<int:file_id>')
@@ -1374,7 +1536,7 @@ def download_file(file_id):
         return redirect(url_for('team_files', error=f'Error downloading file: {str(e)}'))
 
 
-@app.route('/team-files/delete/<int:file_id>')
+@app.route('/team-files/delete/<int:file_id>', methods=['POST'])
 def delete_file(file_id):
     """Delete a file"""
     try:
@@ -1385,7 +1547,7 @@ def delete_file(file_id):
         
         if not file_record:
             conn.close()
-            return redirect(url_for('team_files', error='File not found'))
+            return redirect(url_for('admin_dashboard', error='File not found'))
         
         file_dict = dict(file_record)
         
@@ -1398,10 +1560,55 @@ def delete_file(file_id):
         conn.commit()
         conn.close()
         
-        return redirect(url_for('team_files', message='✓ File deleted successfully!'))
+        return redirect(url_for('admin_dashboard', message='✓ File deleted successfully!'))
     
     except Exception as e:
-        return redirect(url_for('team_files', error=f'Error deleting file: {str(e)}'))
+        return redirect(url_for('admin_dashboard', error=f'Error deleting file: {str(e)}'))
+
+
+@app.route('/debug-data')
+def debug_data():
+    """Debug route to check database data"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get all companies with coordinates
+        cursor.execute('SELECT company_name, eircode, latitude, longitude FROM companies WHERE latitude IS NOT NULL AND longitude IS NOT NULL')
+        companies_with_coords = cursor.fetchall()
+        
+        # Get all schools with coordinates
+        cursor.execute('SELECT school_name, address, latitude, longitude FROM schools WHERE latitude IS NOT NULL AND longitude IS NOT NULL')
+        schools_with_coords = cursor.fetchall()
+        
+        # Get all companies (total)
+        cursor.execute('SELECT COUNT(*) as count FROM companies')
+        total_companies = cursor.fetchone()['count']
+        
+        # Get all schools (total)
+        cursor.execute('SELECT COUNT(*) as count FROM schools')
+        total_schools = cursor.fetchone()['count']
+        
+        conn.close()
+        
+        return f"""
+        <h1>Database Debug Info</h1>
+        <h2>Companies</h2>
+        <p>Total: {total_companies}</p>
+        <p>With coordinates: {len(companies_with_coords)}</p>
+        <ul>
+            {''.join(f'<li>{c["company_name"]} - Lat: {c["latitude"]}, Lon: {c["longitude"]}</li>' for c in companies_with_coords)}
+        </ul>
+        
+        <h2>Schools</h2>
+        <p>Total: {total_schools}</p>
+        <p>With coordinates: {len(schools_with_coords)}</p>
+        <ul>
+            {''.join(f'<li>{s["school_name"]} - Lat: {s["latitude"]}, Lon: {s["longitude"]}</li>' for s in schools_with_coords)}
+        </ul>
+        """
+    except Exception as e:
+        return f"<h1>Error</h1><p>{str(e)}</p>"
 
 
 if __name__ == '__main__':
