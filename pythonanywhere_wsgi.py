@@ -12,7 +12,7 @@ if project_home not in sys.path:
 
 # Set environment variables for the application
 os.environ['DATABASE_PATH'] = '/home/zhonghuazhang/Elephant-In-the-Room-Fundarasing/data/companies.db'
-os.environ['GOOGLE_MAPS_API_KEY'] = 'YOUR_GOOGLE_MAPS_API_KEY_HERE'  # Replace with your actual API key
+os.environ['GOOGLE_MAPS_API_KEY'] = 'AIzaSyAC5xqPdp_6Ey87-ram1gZWM5L658yo-I4'  # Your API key
 
 # Import the Flask app from main.py
 from main import app as application
