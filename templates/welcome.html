@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fundraising Dashboard - Fidelity & Elephant in the Room</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         * {
             margin: 0;
@@ -812,42 +814,51 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         var mapInstance;
-        // Separate layers so DB markers and GeoJSON markers never mix
-        var dbCompanyLayer  = L.layerGroup();  // DB companies  — type filter only
-        var dbSchoolLayer   = L.layerGroup();  // DB schools    — type filter only
-        var geoCompanyLayer = L.layerGroup();  // GeoJSON companies — type + county
-        var geoSchoolLayer  = L.layerGroup();  // GeoJSON schools   — type + county
+        var clusterOpts = { maxClusterRadius: 30, spiderfyOnMaxZoom: true, showCoverageOnHover: false };
+        // One cluster per type — companies cluster together, schools cluster together
+        var companyCluster = L.markerClusterGroup(clusterOpts);
+        var schoolCluster  = L.markerClusterGroup(clusterOpts);
 
-        var _geoMarkers   = [];  // [{marker, type, county}]
+        var _dbCompanyMarkers = [];  // DB company markers — no county data
+        var _dbSchoolMarkers  = [];  // DB school markers  — no county data
+        var _geoMarkers       = [];  // [{marker, type, county}] from GeoJSON files
+
         var _activeType   = 'all';
         var _activeCounty = '';
 
         function applyFilters() {
-            // DB layers: only type filter (no county — DB markers have no county data)
             var showCompany = _activeType === 'all' || _activeType === 'companies';
             var showSchool  = _activeType === 'all' || _activeType === 'schools';
 
-            if (showCompany) mapInstance.addLayer(dbCompanyLayer);
-            else             mapInstance.removeLayer(dbCompanyLayer);
+            companyCluster.clearLayers();
+            schoolCluster.clearLayers();
 
-            if (showSchool) mapInstance.addLayer(dbSchoolLayer);
-            else            mapInstance.removeLayer(dbSchoolLayer);
+            if (showCompany) {
+                _dbCompanyMarkers.forEach(function (m) { companyCluster.addLayer(m); });
+                _geoMarkers.forEach(function (item) {
+                    if (item.type !== 'company') return;
+                    if (_activeCounty && item.county !== _activeCounty) return;
+                    companyCluster.addLayer(item.marker);
+                });
+                mapInstance.addLayer(companyCluster);
+            } else {
+                mapInstance.removeLayer(companyCluster);
+            }
 
-            // GeoJSON layers: type + county filter — clear and rebuild
-            geoCompanyLayer.clearLayers();
-            geoSchoolLayer.clearLayers();
-
-            _geoMarkers.forEach(function (item) {
-                var typeOk   = _activeType === 'all'
-                            || (_activeType === 'companies' && item.type === 'company')
-                            || (_activeType === 'schools'   && item.type === 'school');
-                var countyOk = !_activeCounty || item.county === _activeCounty;
-                if (!typeOk || !countyOk) return;
-                if (item.type === 'company') geoCompanyLayer.addLayer(item.marker);
-                else                         geoSchoolLayer.addLayer(item.marker);
-            });
+            if (showSchool) {
+                _dbSchoolMarkers.forEach(function (m) { schoolCluster.addLayer(m); });
+                _geoMarkers.forEach(function (item) {
+                    if (item.type !== 'school') return;
+                    if (_activeCounty && item.county !== _activeCounty) return;
+                    schoolCluster.addLayer(item.marker);
+                });
+                mapInstance.addLayer(schoolCluster);
+            } else {
+                mapInstance.removeLayer(schoolCluster);
+            }
         }
 
         function setFilter(type) {
@@ -880,10 +891,8 @@
                 maxZoom: 19
             }).addTo(mapInstance);
 
-            dbCompanyLayer.addTo(mapInstance);
-            dbSchoolLayer.addTo(mapInstance);
-            geoCompanyLayer.addTo(mapInstance);
-            geoSchoolLayer.addTo(mapInstance);
+            companyCluster.addTo(mapInstance);
+            schoolCluster.addTo(mapInstance);
 
             function makeIcon(emoji, bg) {
                 return L.divIcon({
@@ -898,7 +907,7 @@
             var companyIcon = makeIcon('🏢', '#36943b');
             var schoolIcon  = makeIcon('📚', '#e53935');
 
-            // DB markers go into their own layers and are never cleared
+            // DB markers — stored separately, no county data, not county-filtered
             var companyLocations = {{ company_locations | default([]) | tojson }};
             var schoolLocations  = {{ school_locations  | default([]) | tojson }};
 
@@ -907,7 +916,8 @@
                 var m = L.marker([loc.lat, loc.lon], { icon: companyIcon });
                 m.bindPopup('<strong>' + (loc.name || 'Company') + '</strong>' +
                     (loc.eircode ? '<br>Eircode: ' + loc.eircode : ''));
-                dbCompanyLayer.addLayer(m);
+                _dbCompanyMarkers.push(m);
+                companyCluster.addLayer(m);
             });
 
             schoolLocations.forEach(function (loc) {
@@ -915,7 +925,8 @@
                 var m = L.marker([loc.lat, loc.lon], { icon: schoolIcon });
                 m.bindPopup('<strong>' + (loc.name || 'School') + '</strong>' +
                     (loc.address ? '<br>' + loc.address : ''));
-                dbSchoolLayer.addLayer(m);
+                _dbSchoolMarkers.push(m);
+                schoolCluster.addLayer(m);
             });
 
             fetch('/api/geojson-markers')
@@ -940,8 +951,8 @@
 
                         _geoMarkers.push({ marker: m, type: type, county: county });
 
-                        if (type === 'company') geoCompanyLayer.addLayer(m);
-                        else                    geoSchoolLayer.addLayer(m);
+                        if (type === 'company') companyCluster.addLayer(m);
+                        else                    schoolCluster.addLayer(m);
 
                         if (county) counties.add(county);
                     });
@@ -955,9 +966,9 @@
                         select.appendChild(opt);
                     });
 
-                    // Fit map to all visible markers
+                    // Fit map to all markers
                     var all = [];
-                    [dbCompanyLayer, dbSchoolLayer, geoCompanyLayer, geoSchoolLayer].forEach(function (lg) {
+                    [companyCluster, schoolCluster].forEach(function (lg) {
                         lg.eachLayer(function (l) { all.push(l); });
                     });
                     if (all.length > 0) {
