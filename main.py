@@ -2,9 +2,11 @@ from flask import Flask, render_template, request, send_from_directory, redirect
 import pandas as pd
 import os
 import glob
+import math
+import json
+import threading
 import requests
 import time
-import random
 import config
 import database  # Import database module
 from werkzeug.utils import secure_filename
@@ -25,297 +27,160 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 database.init_db()
 database.migrate_database()
 
-# Initialize Google Maps client if API key is configured
-gmaps_client = None
-if hasattr(config, 'GOOGLE_MAPS_API_KEY') and config.GOOGLE_MAPS_API_KEY != "YOUR_API_KEY_HERE":
+_nominatim_last_call = 0.0
+
+# --- County cache (Nominatim reverse geocoding) ---
+_COUNTY_CACHE_FILE = os.path.join('data', 'county_cache.json')
+_county_cache_lock = threading.Lock()
+
+def _load_county_cache():
     try:
-        import googlemaps
-        gmaps_client = googlemaps.Client(key=config.GOOGLE_MAPS_API_KEY)
-        print("✓ Google Maps API initialized successfully")
-    except ImportError:
-        print("⚠ googlemaps library not installed. Run: pip install googlemaps")
-    except Exception as e:
-        print(f"⚠ Error initializing Google Maps: {e}")
+        with open(_COUNTY_CACHE_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
-
-def convert_eircode_with_google(eircode):
-    """
-    Convert Eircode to coordinates using Google Maps Geocoding API.
-    
-    Args:
-        eircode: The Eircode to convert
-    
-    Returns:
-        Tuple of (lat, lon) or None if not found
-    """
-    if not gmaps_client:
-        return None
-    
-    if pd.isna(eircode) or str(eircode).strip() == '':
-        return None
-    
-    # Clean the eircode
-    eircode_str = str(eircode).strip().upper()
-    if len(eircode_str) == 7 and ' ' not in eircode_str:
-        eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
-    else:
-        eircode_formatted = eircode_str
-    
+def _save_county_cache(cache):
     try:
-        # Use Google Maps Geocoding API
-        result = gmaps_client.geocode(eircode_formatted + ', Ireland')
-        
-        if result and len(result) > 0:
-            location = result[0]['geometry']['location']
-            lat = location['lat']
-            lng = location['lng']
-            
-            # Verify it's in Ireland by checking address components
-            address_components = result[0].get('address_components', [])
-            country_found = False
-            
-            for component in address_components:
-                if 'country' in component.get('types', []):
-                    if component.get('short_name') == 'IE' or component.get('long_name') == 'Ireland':
-                        country_found = True
-                    break
-            
-            if country_found:
-                return (lat, lng)
-        
-        return None
-    
-    except Exception as e:
-        print(f"Error with Google Maps API for {eircode}: {str(e)}")
-        return None
+        with open(_COUNTY_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
+_county_cache = _load_county_cache()
 
-def get_address_from_google(eircode):
-    """
-    Get full formatted address and coordinates from Eircode using Google Maps API.
-    
-    Args:
-        eircode: The Eircode to convert
-    
-    Returns:
-        Dictionary with 'address', 'lat', 'lon' or None if not found
-    """
-    if not gmaps_client:
-        return None
-    
-    if pd.isna(eircode) or str(eircode).strip() == '':
-        return None
-    
-    # Clean the eircode
-    eircode_str = str(eircode).strip().upper()
-    if len(eircode_str) == 7 and ' ' not in eircode_str:
-        eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
-    else:
-        eircode_formatted = eircode_str
-    
+def _reverse_geocode_county(lat, lon):
+    """Single Nominatim reverse geocode call — returns county string or None."""
+    global _nominatim_last_call
+    elapsed = time.time() - _nominatim_last_call
+    if elapsed < 1.1:
+        time.sleep(1.1 - elapsed)
     try:
-        # Use Google Maps Geocoding API
-        result = gmaps_client.geocode(eircode_formatted + ', Ireland')
-        
-        if result and len(result) > 0:
-            location = result[0]['geometry']['location']
-            lat = location['lat']
-            lng = location['lng']
-            
-            # Verify it's in Ireland
-            address_components = result[0].get('address_components', [])
-            country_found = False
-            
-            for component in address_components:
-                if 'country' in component.get('types', []):
-                    if component.get('short_name') == 'IE' or component.get('long_name') == 'Ireland':
-                        country_found = True
-                    break
-            
-            if country_found:
-                # Extract formatted address following Irish address规范
-                formatted_address = extract_irish_address(address_components, eircode_formatted)
-                
-                return {
-                    'address': formatted_address,
-                    'lat': lat,
-                    'lon': lng
-                }
-        
-        return None
-    
-    except Exception as e:
-        print(f"Error getting address from Google Maps for {eircode}: {str(e)}")
+        resp = requests.get(
+            'https://nominatim.openstreetmap.org/reverse',
+            params={'lat': lat, 'lon': lon, 'format': 'json'},
+            headers={'User-Agent': 'ElephantInTheRoom/1.0 (fundraising-tool)'},
+            timeout=10
+        )
+        _nominatim_last_call = time.time()
+        addr = resp.json().get('address', {})
+        return (addr.get('county')
+                or addr.get('state_district')
+                or addr.get('state')
+                or None)
+    except Exception:
+        _nominatim_last_call = time.time()
         return None
 
+def _coord_key(lat, lon):
+    return f'{round(lat, 4)},{round(lon, 4)}'
 
-def extract_irish_address(address_components, eircode):
+def _build_county_cache_bg():
+    """Background thread: fills county cache for all GeoJSON points."""
+    global _county_cache
+    data_folder = app.config['DATA_FOLDER']
+    changed = False
+    for path in glob.glob(os.path.join(data_folder, '*.geojson')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                geojson = json.load(f)
+            for feature in geojson.get('features', []):
+                if feature.get('geometry', {}).get('type') != 'Point':
+                    continue
+                coords = feature['geometry']['coordinates']
+                lat, lon = coords[1], coords[0]
+                key = _coord_key(lat, lon)
+                with _county_cache_lock:
+                    already_cached = key in _county_cache
+                if already_cached:
+                    continue
+                county = _reverse_geocode_county(lat, lon)
+                with _county_cache_lock:
+                    _county_cache[key] = county
+                changed = True
+        except Exception:
+            pass
+    if changed:
+        with _county_cache_lock:
+            _save_county_cache(_county_cache)
+
+threading.Thread(target=_build_county_cache_bg, daemon=True).start()
+
+
+def _nominatim_request(params):
+    """Single Nominatim request with 1 RPS rate limiting. params is a dict."""
+    global _nominatim_last_call
+    elapsed = time.time() - _nominatim_last_call
+    if elapsed < 1.0:
+        time.sleep(1.0 - elapsed)
+    base_params = {'format': 'jsonv2', 'limit': 5, 'countrycodes': 'ie'}
+    base_params.update(params)
+    response = requests.get(
+        'https://nominatim.openstreetmap.org/search',
+        params=base_params,
+        headers={'User-Agent': 'ElephantFundraising/1.0'},
+        timeout=10,
+    )
+    _nominatim_last_call = time.time()
+    if response.status_code == 200:
+        return response.json()
+    return []
+
+
+def _ireland_coords(results):
+    """Extract first valid Irish (lat, lon) from a Nominatim result list."""
+    for r in results:
+        try:
+            lat, lon = float(r['lat']), float(r['lon'])
+            if 51.4 <= lat <= 55.4 and -10.7 <= lon <= -5.4:
+                return lat, lon
+        except (KeyError, ValueError):
+            continue
+    return None, None
+
+
+def geocode_location(eircode=None, address=None):
     """
-    Extract and format Irish address from Google Maps address components.
-    Following Irish address规范: street, town/community, Co. County, Eircode
-    
-    Args:
-        address_components: List of address components from Google Maps
-        eircode: The original Eircode
-    
-    Returns:
-        Formatted Irish address string
+    Resolve coordinates for a manually entered record.
+    Tries in order:
+      1. Nominatim free-text address search (if address given)
+      2. Nominatim postalcode search (if eircode given)
+    Returns (lat, lon) floats or raises ValueError if nothing found.
     """
-    street = ''
-    town = ''
-    county = ''
-    
-    for component in address_components:
-        types = component.get('types', [])
-        
-        # Extract street address
-        if 'street_number' in types or 'route' in types:
-            if not street:
-                street = component.get('long_name', '')
-            else:
-                street += ', ' + component.get('long_name', '')
-        
-        # Extract town/locality
-        elif 'locality' in types or 'sublocality' in types:
-            if not town:
-                town = component.get('long_name', '')
-        
-        # Extract county
-        elif 'administrative_area_level_2' in types:
-            county_name = component.get('long_name', '')
-            # Remove "County" prefix if present and format as "Co. XX"
-            if 'County' in county_name:
-                county_name = county_name.replace('County', 'Co.').strip()
-            elif 'Co.' not in county_name:
-                county_name = 'Co. ' + county_name
-            county = county_name
-    
-    # Build formatted address
-    parts = []
-    if street:
-        parts.append(street)
-    if town:
-        parts.append(town)
-    if county:
-        parts.append(county)
-    if eircode:
-        parts.append(eircode)
-    
-    return ', '.join(parts) if parts else eircode
+    if address and str(address).strip():
+        try:
+            results = _nominatim_request({'q': str(address).strip()})
+            lat, lon = _ireland_coords(results)
+            if lat is not None:
+                return lat, lon
+        except Exception as e:
+            print(f"Nominatim address error for {address}: {e}")
+
+    eircode_str = str(eircode).strip().upper() if eircode else ''
+    if eircode_str:
+        if len(eircode_str) == 7 and ' ' not in eircode_str:
+            eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
+        else:
+            eircode_formatted = eircode_str
+        try:
+            results = _nominatim_request({'postalcode': eircode_formatted})
+            lat, lon = _ireland_coords(results)
+            if lat is not None:
+                return lat, lon
+        except Exception as e:
+            print(f"Nominatim postalcode error for {eircode}: {e}")
+
+    raise ValueError(f"Could not find coordinates for address='{address}', eircode='{eircode}'")
 
 
 def convert_eircode_to_address(eircode):
-    """
-    Convert a single Eircode to latitude and longitude coordinates within Ireland.
-    Uses Google Maps API if available, otherwise falls back to OpenStreetMap.
-    
-    Args:
-        eircode: The Eircode to convert (e.g., "A65 F4E2")
-    
-    Returns:
-        String containing latitude,longitude or empty string if not found
-    """
+    """Convert an Eircode to 'lat, lon' string for batch import. Returns '' if not found."""
     if pd.isna(eircode) or str(eircode).strip() == '':
         return ''
-    
-    # Clean the eircode - format with space (e.g., "A65 F4E2")
-    eircode_str = str(eircode).strip().upper()
-    # Ensure proper format: XXX XXXX
-    if len(eircode_str) == 7 and ' ' not in eircode_str:
-        eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
-    else:
-        eircode_formatted = eircode_str
-    
-    # Try Google Maps API first if available
-    if gmaps_client:
-        coords = convert_eircode_with_google(eircode_formatted)
-        if coords:
-            return f"{coords[0]}, {coords[1]}"
-    
-    # Fallback to OpenStreetMap if Google Maps fails or is not configured
     try:
-        headers = {
-            'User-Agent': 'EircodeConverter/1.0'
-        }
-        
-        # Strategy 1: Try OpenStreetMap with various query formats
-        search_queries = [
-            f"{eircode_formatted}, Ireland",
-            f"Eircode {eircode_formatted}, Ireland",
-            f"{eircode_formatted}",
-        ]
-        
-        for query in search_queries:
-            url = f"https://nominatim.openstreetmap.org/search?q={query.replace(' ', '+')}&format=json&limit=5"
-            
-            response = requests.get(url, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                if data and len(data) > 0:
-                    # Filter results to ensure they're in Ireland
-                    for result in data:
-                        display_name = result.get('display_name', '').lower()
-                        
-                        # Check if result is in Ireland (not UK or elsewhere)
-                        if 'ireland' in display_name and 'united kingdom' not in display_name and 'england' not in display_name:
-                            lat = float(result.get('lat', 0))
-                            lon = float(result.get('lon', 0))
-                            
-                            # Verify coordinates are within Ireland's bounds
-                            # Ireland approximate bounds: Lat 51.4-55.4, Lon -10.7 to -5.4
-                            if 51.4 <= lat <= 55.4 and -10.7 <= lon <= -5.4:
-                                return f"{lat}, {lon}"
-        
-        # Strategy 2: If OSM fails, use Eircode routing key to estimate location
-        # Eircode routing keys (first 3 chars) correspond to geographic areas
-        routing_key = eircode_str[:3]
-        
-        # Approximate center coordinates for major routing keys
-        routing_key_coords = {
-            # Dublin area
-            'D01': (53.3498, -6.2603), 'D02': (53.3441, -6.2675), 'D03': (53.3515, -6.2540),
-            'D04': (53.3308, -6.2419), 'D05': (53.3378, -6.2512), 'D06': (53.3278, -6.2597),
-            'D07': (53.3467, -6.2756), 'D08': (53.3425, -6.2812), 'D09': (53.3698, -6.2456),
-            'D10': (53.3345, -6.2934), 'D11': (53.3389, -6.3012), 'D12': (53.3156, -6.2789),
-            'D13': (53.3712, -6.1789), 'D14': (53.3234, -6.2234), 'D15': (53.3889, -6.3456),
-            'D16': (53.2978, -6.2123), 'D17': (53.3567, -6.1234), 'D18': (53.2789, -6.1567),
-            'D20': (53.4123, -6.3789), 'D22': (53.3456, -6.3912), 'D24': (53.2912, -6.3345),
-            
-            # Other major areas
-            'W23': (53.2189, -6.6756),  # Naas, Co. Kildare
-            'W12': (53.3456, -6.4567),  # Lucan
-            'W34': (53.5234, -7.3456),  # Athlone area
-            'A65': (53.4567, -7.8901),  # Longford area
-            'A42': (53.8901, -6.7234),  # Drogheda area
-            'A82': (54.0234, -6.4567),  # Dundalk area
-            'C15': (54.6789, -7.7234),  # Donegal area
-            'F12': (54.2345, -7.6789),  # Sligo area
-            'G12': (53.2678, -9.0123),  # Galway area
-            'H12': (52.6789, -8.6234),  # Limerick area
-            'K15': (52.8901, -9.5678),  # Kerry area
-            'P12': (51.8901, -8.4567),  # Cork area
-            'T12': (52.2345, -7.1234),  # Waterford area
-            'Y14': (52.7890, -7.5678),  # Wexford area
-        }
-        
-        if routing_key in routing_key_coords:
-            lat, lon = routing_key_coords[routing_key]
-            # Add small random offset to differentiate addresses in same area
-            lat_offset = random.uniform(-0.01, 0.01)
-            lon_offset = random.uniform(-0.01, 0.01)
-            return f"{lat + lat_offset}, {lon + lon_offset}"
-        
-        # If no match found, return empty
-        return ''
-    
-    except requests.exceptions.Timeout:
-        return ''
-    except requests.exceptions.ConnectionError:
-        return ''
-    except Exception as e:
-        print(f"Error converting {eircode}: {str(e)}")
+        lat, lon = geocode_location(eircode=eircode)
+        return f"{lat}, {lon}"
+    except ValueError:
         return ''
 
 
@@ -391,25 +256,11 @@ def import_companies_from_excel(file_path):
                 if not company_name:
                     continue
                 
-                # Get coordinates and address from Eircode using Google Maps API
+                # Get coordinates from Eircode using Nominatim
                 latitude = None
                 longitude = None
-                google_address = None
-                
-                if eircode and gmaps_client:
-                    # Try to get full address and coordinates from Google Maps
-                    google_result = get_address_from_google(eircode)
-                    if google_result:
-                        latitude = google_result['lat']
-                        longitude = google_result['lon']
-                        google_address = google_result['address']
-                
-                # Use Google Maps address if no manual address provided
-                if not address and google_address:
-                    address = google_address
-                
-                # Fallback to old method if Google Maps didn't work
-                if (not latitude or not longitude) and eircode:
+
+                if eircode:
                     coords_str = convert_eircode_to_address(eircode)
                     if coords_str and ',' in coords_str:
                         parts = coords_str.split(',')
@@ -417,7 +268,7 @@ def import_companies_from_excel(file_path):
                             try:
                                 latitude = float(parts[0].strip())
                                 longitude = float(parts[1].strip())
-                            except:
+                            except Exception:
                                 pass
                 
                 # Insert or update record
@@ -441,10 +292,7 @@ def import_companies_from_excel(file_path):
                       preferred_school, preferred_area, contact_name, contact_email, status, donation_amount))
                 
                 imported_count += 1
-                
-                # Small delay to avoid overwhelming the geocoding API
-                time.sleep(0.1)
-                
+
             except Exception as e:
                 print(f"Error importing row {index}: {str(e)}")
                 continue
@@ -460,37 +308,43 @@ def import_companies_from_excel(file_path):
         return 0
 
 
+def _read_school_df(file_path):
+    """Read school Excel sheets (Mainstream + Special) into one DataFrame."""
+    frames = []
+    if file_path.endswith('.csv'):
+        frames.append(pd.read_csv(file_path))
+    else:
+        engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
+        xl = pd.ExcelFile(file_path, engine=engine)
+        for sheet in xl.sheet_names:
+            if sheet.lower() in ('mainstream schools', 'special schools'):
+                df = xl.parse(sheet, header=1)
+                if not df.empty:
+                    frames.append(df)
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
 def import_schools_from_excel(file_path):
     """
     Import school data from Excel file into SQLite database.
-    
-    Args:
-        file_path: Path to the Excel file
-    
+    Uses School Latitude/Longitude from the file directly; falls back to
+    Nominatim geocoding via convert_eircode_to_address() when missing.
+
     Returns:
         Number of records imported
     """
     try:
-        # Read Excel file
-        if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        else:
-            engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
-            df = pd.read_excel(file_path, engine=engine)
-        
+        df = _read_school_df(file_path)
         if df.empty:
             return 0
-        
+
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        
         imported_count = 0
-        
+
         for index, row in df.iterrows():
             try:
-                # Extract data - adjust column names based on your Excel structure
-                school_name = str(row.iloc[0]).strip() if len(row) > 0 else ''
-                
+                school_name = str(row.get('Official Name', '')).strip()
                 if not school_name or school_name == 'nan':
                     continue
                 
@@ -500,90 +354,27 @@ def import_schools_from_excel(file_path):
                 email = str(row.iloc[3]).strip() if len(row) > 3 and pd.notna(row.iloc[3]) else None
                 phone = str(row.iloc[4]).strip() if len(row) > 4 and pd.notna(row.iloc[4]) else None
                 
-                # Get coordinates from address using Google Maps API
-                latitude = None
-                longitude = None
-                
-                # The 'address' field might actually be an Eircode
-                eircode_or_address = address
-                
-                if eircode_or_address and gmaps_client:
-                    # Try multiple approaches to get coordinates
-                    
-                    # Approach 1: If it looks like an Eircode (7 chars, format XXX XXXX)
-                    is_eircode = False
-                    if len(eircode_or_address.replace(' ', '')) == 7:
-                        # Looks like an Eircode
-                        eircode_formatted = eircode_or_address.strip().upper()
-                        if ' ' not in eircode_formatted and len(eircode_formatted) == 7:
-                            eircode_formatted = eircode_formatted[:3] + ' ' + eircode_formatted[3:]
-                        
-                        try:
-                            result = gmaps_client.geocode(eircode_formatted + ', Ireland')
-                            if result and len(result) > 0:
-                                location = result[0]['geometry']['location']
-                                lat = location['lat']
-                                lng = location['lng']
-                                
-                                # Verify it's in Ireland
-                                if 51.4 <= lat <= 55.4 and -10.7 <= lng <= -5.4:
-                                    latitude = lat
-                                    longitude = lng
-                                    is_eircode = True
-                                    print(f"✓ Geocoded {school_name} (Eircode): {lat:.4f}, {lng:.4f}")
-                        except Exception as geo_error:
-                            print(f"Geocoding error for {school_name} (Eircode): {geo_error}")
-                    
-                    # Approach 2: If not an Eircode, try school name + address
-                    if not is_eircode:
-                        search_query = f"{school_name}, {eircode_or_address}, Ireland"
-                        try:
-                            result = gmaps_client.geocode(search_query)
-                            if result and len(result) > 0:
-                                location = result[0]['geometry']['location']
-                                lat = location['lat']
-                                lng = location['lng']
-                                
-                                # Verify it's in Ireland
-                                if 51.4 <= lat <= 55.4 and -10.7 <= lng <= -5.4:
-                                    latitude = lat
-                                    longitude = lng
-                                    print(f"✓ Geocoded {school_name} (Address): {lat:.4f}, {lng:.4f}")
-                        except Exception as geo_error:
-                            print(f"Geocoding error for {school_name} (Address): {geo_error}")
-                
                 # Insert or update record
                 cursor.execute('''
                     INSERT INTO schools 
-                    (school_name, address, contact_info, email, phone, latitude, longitude)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(school_name) DO UPDATE SET
-                        address = excluded.address,
-                        contact_info = excluded.contact_info,
-                        email = excluded.email,
-                        phone = excluded.phone,
-                        latitude = excluded.latitude,
-                        longitude = excluded.longitude,
-                        updated_at = CURRENT_TIMESTAMP
-                ''', (school_name, address, contact_info, email, phone, latitude, longitude))
+                    (school_name, address, contact_info, email, phone)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT DO NOTHING
+                ''', (school_name, address, contact_info, email, phone))
                 
                 imported_count += 1
                 
-                # Small delay to avoid overwhelming the geocoding API
-                time.sleep(0.1)
-                
             except Exception as e:
-                print(f"Error importing school row {index}: {str(e)}")
+                print(f"Error importing school row {index}: {e}")
                 continue
-        
+
         conn.commit()
         conn.close()
-        
         print(f"✓ Successfully imported {imported_count} school records")
         return imported_count
-    
+
     except Exception as e:
-        print(f"Error importing schools from {file_path}: {str(e)}")
+        print(f"Error importing schools from {file_path}: {e}")
         return 0
 
 
@@ -612,26 +403,36 @@ def get_all_companies():
 
 
 def get_all_schools():
-    """
-    Get all schools from database.
-    
-    Returns:
-        List of school dictionaries
-    """
+    """Get all schools from database."""
     conn = database.get_db_connection()
     cursor = conn.cursor()
-    
     cursor.execute('''
-        SELECT id, school_name, address, contact_info, email, phone,
+        SELECT id, roll_number, school_name, eircode, address, county,
+               latitude, longitude, contact_info, email, phone,
+               deis, school_type, school_level, enrolment,
                status, created_at
         FROM schools
-        ORDER BY created_at DESC
+        ORDER BY school_name ASC
     ''')
-    
     schools = [dict(row) for row in cursor.fetchall()]
     conn.close()
-    
     return schools
+
+
+def get_school_locations():
+    """Get all schools with valid coordinates for map display."""
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT id, school_name, eircode, address, county,
+               latitude, longitude, email, phone
+        FROM schools
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY school_name ASC
+    ''')
+    locations = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return locations
 
 
 def get_company_locations():
@@ -655,129 +456,8 @@ def get_company_locations():
     
     locations = [dict(row) for row in cursor.fetchall()]
     conn.close()
-    
+
     return locations
-
-
-def extract_county_from_address(address):
-    """
-    Extract county from address string.
-    Looks for patterns like 'Co. Dublin', 'County Cork', etc.
-    
-    Args:
-        address: Full address string
-    
-    Returns:
-        County name or 'Unknown' if not found
-    """
-    if not address:
-        return 'Unknown'
-    
-    address_lower = address.lower()
-    
-    # Common Irish counties
-    counties = [
-        'Dublin', 'Cork', 'Galway', 'Limerick', 'Waterford', 
-        'Kildare', 'Meath', 'Wicklow', 'Wexford', 'Kilkenny',
-        'Tipperary', 'Clare', 'Kerry', 'Laois', 'Offaly',
-        'Longford', 'Westmeath', 'Roscommon', 'Sligo', 'Leitrim',
-        'Mayo', 'Donegal', 'Monaghan', 'Cavan', 'Louth'
-    ]
-    
-    # Try to find "Co. XX" or "County XX" pattern
-    import re
-    co_pattern = r'(?:co\.?\s+|county\s+)(\w+)'
-    matches = re.findall(co_pattern, address_lower)
-    
-    if matches:
-        county_name = matches[-1].capitalize()
-        # Check if it's a known county
-        for county in counties:
-            if county.lower() == county_name.lower():
-                return county
-        return county_name
-    
-    # Fallback: check if any county name appears in address
-    for county in counties:
-        if county.lower() in address_lower:
-            return county
-    
-    return 'Other'
-
-
-def get_matched_companies_and_schools_by_county():
-    """
-    Get matched companies and schools grouped by county with donation amounts.
-    
-    Returns:
-        Dictionary with county as key and list of matches as value
-    """
-    conn = database.get_db_connection()
-    cursor = conn.cursor()
-    
-    # Get all active companies with donations
-    cursor.execute('''
-        SELECT id, company_name, address, preferred_school, 
-               donation_amount, status
-        FROM companies
-        WHERE status = 'active' AND donation_amount > 0
-        ORDER BY company_name
-    ''')
-    
-    companies = [dict(row) for row in cursor.fetchall()]
-    
-    # Group by county
-    county_data = {}
-    
-    for company in companies:
-        county = extract_county_from_address(company.get('address'))
-        
-        if county not in county_data:
-            county_data[county] = {
-                'county': county,
-                'matches': [],
-                'total_donations': 0,
-                'company_count': 0,
-                'school_count': 0
-            }
-        
-        # Find matching school if specified
-        school_info = None
-        preferred_school = company.get('preferred_school')
-        
-        if preferred_school:
-            cursor.execute('''
-                SELECT school_name, address, donation_received
-                FROM schools
-                WHERE school_name LIKE ?
-                LIMIT 1
-            ''', (f'%{preferred_school}%',))
-            
-            school_row = cursor.fetchone()
-            if school_row:
-                school_info = dict(school_row)
-        
-        match_entry = {
-            'company_name': company['company_name'],
-            'company_address': company.get('address', ''),
-            'donation_amount': company.get('donation_amount', 0),
-            'preferred_school': preferred_school,
-            'school_info': school_info
-        }
-        
-        county_data[county]['matches'].append(match_entry)
-        county_data[county]['total_donations'] += company.get('donation_amount', 0)
-        county_data[county]['company_count'] += 1
-        
-        if school_info:
-            county_data[county]['school_count'] += 1
-    
-    conn.close()
-    
-    # Convert to sorted list
-    result = sorted(county_data.values(), key=lambda x: x['total_donations'], reverse=True)
-    
-    return result
 
 
 @app.route('/')
@@ -1094,25 +774,36 @@ def school_information():
         
         # Get data from database
         schools = get_all_schools()
-        
+        school_locations = get_school_locations()
+
         if not schools:
-            return render_template('school.html', 
-                                 message='No school data found. Please add school Excel or CSV files to the "data" folder.')
-        
-        # Convert to DataFrame
+            return render_template('school.html',
+                                   message='No school data found. Please add school Excel or CSV files to the "data" folder.')
+
+        # Build table (drop internal cols like lat/lon/id)
         school_df = pd.DataFrame(schools)
-        school_df = school_df.fillna('')
-        
-        # Convert to HTML
+        display_cols = ['roll_number', 'school_name', 'eircode', 'address', 'county',
+                        'email', 'phone', 'contact_info', 'status']
+        existing_cols = [c for c in display_cols if c in school_df.columns]
+        school_df = school_df[existing_cols].fillna('')
         html_table = school_df.to_html(classes='data-table', index=False, escape=False)
-        
-        return render_template('school.html', 
-                             table=html_table, 
-                             total_rows=len(school_df))
-    
+
+        location_data = [
+            {'lat': loc['latitude'], 'lon': loc['longitude'],
+             'name': loc['school_name'], 'eircode': loc.get('eircode', '')}
+            for loc in school_locations
+            if loc.get('latitude') and loc.get('longitude')
+        ]
+
+        return render_template('school.html',
+                               table=html_table,
+                               total_rows=len(school_df),
+                               locations=location_data,
+                               has_locations=len(location_data) > 0)
+
     except Exception as e:
-        return render_template('school.html', 
-                             message=f'Error: {str(e)}')
+        return render_template('school.html',
+                               message=f'Error: {str(e)}')
 
 
 @app.route('/admin/import', methods=['GET', 'POST'])
@@ -1194,47 +885,45 @@ def save_company():
         
         company_id = request.form.get('id')
         company_name = request.form.get('company_name')
-        eircode = request.form.get('eircode')
-        address = request.form.get('address')
-        preferred_school = request.form.get('preferred_school')
-        preferred_area = request.form.get('preferred_area')
-        contact_name = request.form.get('contact_name')
-        contact_email = request.form.get('contact_email')
+        eircode = request.form.get('eircode') or None
+        address = request.form.get('address') or None
+        preferred_school = request.form.get('preferred_school') or None
+        preferred_area = request.form.get('preferred_area') or None
+        contact_name = request.form.get('contact_name') or None
+        contact_email = request.form.get('contact_email') or None
         status = request.form.get('status', 'pending')
+        donation_raw = request.form.get('donation_amount')
+        donation_amount = float(donation_raw) if donation_raw and donation_raw.strip() else 0.0
         
-        # Get coordinates if eircode provided
-        latitude = None
-        longitude = None
-        if eircode:
-            coords_str = convert_eircode_to_address(eircode)
-            if coords_str and ',' in coords_str:
-                parts = coords_str.split(',')
-                if len(parts) == 2:
-                    try:
-                        latitude = float(parts[0].strip())
-                        longitude = float(parts[1].strip())
-                    except:
-                        pass
-        
+        try:
+            latitude, longitude = geocode_location(eircode=eircode, address=address)
+        except ValueError as e:
+            return render_template('admin.html',
+                                   message=f'✗ Location not found: {e}. Please check the address or Eircode.',
+                                   success=False,
+                                   **get_admin_stats())
+
         if company_id:
-            # Update existing record
             cursor.execute('''
-                UPDATE companies 
+                UPDATE companies
                 SET company_name = ?, eircode = ?, address = ?, latitude = ?, longitude = ?,
-                    preferred_school = ?, preferred_area = ?, contact_name = ?, 
-                    contact_email = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                    preferred_school = ?, preferred_area = ?, contact_name = ?,
+                    contact_email = ?, status = ?, donation_amount = ?,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             ''', (company_name, eircode, address, latitude, longitude,
-                  preferred_school, preferred_area, contact_name, contact_email, status, company_id))
+                  preferred_school, preferred_area, contact_name, contact_email,
+                  status, donation_amount, company_id))
         else:
-            # Insert new record
             cursor.execute('''
-                INSERT INTO companies 
+                INSERT INTO companies
                 (company_name, eircode, address, latitude, longitude,
-                 preferred_school, preferred_area, contact_name, contact_email, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 preferred_school, preferred_area, contact_name, contact_email,
+                 status, donation_amount)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (company_name, eircode, address, latitude, longitude,
-                  preferred_school, preferred_area, contact_name, contact_email, status))
+                  preferred_school, preferred_area, contact_name, contact_email,
+                  status, donation_amount))
         
         conn.commit()
         conn.close()
@@ -1279,30 +968,55 @@ def save_school():
     try:
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        
+
         school_id = request.form.get('id')
         school_name = request.form.get('school_name')
-        address = request.form.get('address')
-        email = request.form.get('email')
-        phone = request.form.get('phone')
-        contact_info = request.form.get('contact_info')
+        roll_number = request.form.get('roll_number') or None
+        eircode = request.form.get('eircode') or None
+        address = request.form.get('address') or None
+        county = request.form.get('county') or None
+        email = request.form.get('email') or None
+        phone = request.form.get('phone') or None
+        contact_info = request.form.get('contact_info') or None
+        deis = request.form.get('deis') or None
+        school_type = request.form.get('school_type') or None
+        school_level = request.form.get('school_level') or None
+        enrolment_raw = request.form.get('enrolment')
+        enrolment = int(enrolment_raw) if enrolment_raw and enrolment_raw.strip().isdigit() else None
         status = request.form.get('status', 'active')
-        
+
+        try:
+            latitude, longitude = geocode_location(eircode=eircode, address=address)
+        except ValueError as e:
+            return render_template('admin.html',
+                                   message=f'✗ Location not found: {e}. Please check the address or Eircode.',
+                                   success=False,
+                                   **get_admin_stats())
+
         if school_id:
-            # Update existing record
             cursor.execute('''
-                UPDATE schools 
-                SET school_name = ?, address = ?, email = ?, phone = ?,
-                    contact_info = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                UPDATE schools
+                SET school_name = ?, roll_number = ?, eircode = ?, address = ?, county = ?,
+                    email = ?, phone = ?, contact_info = ?,
+                    deis = ?, school_type = ?, school_level = ?, enrolment = ?,
+                    latitude = ?, longitude = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            ''', (school_name, address, email, phone, contact_info, status, school_id))
+            ''', (school_name, roll_number, eircode, address, county,
+                  email, phone, contact_info,
+                  deis, school_type, school_level, enrolment,
+                  latitude, longitude, status, school_id))
         else:
-            # Insert new record
             cursor.execute('''
-                INSERT INTO schools 
-                (school_name, address, email, phone, contact_info, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (school_name, address, email, phone, contact_info, status))
+                INSERT INTO schools
+                (school_name, roll_number, eircode, address, county,
+                 email, phone, contact_info,
+                 deis, school_type, school_level, enrolment,
+                 latitude, longitude, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (school_name, roll_number, eircode, address, county,
+                  email, phone, contact_info,
+                  deis, school_type, school_level, enrolment,
+                  latitude, longitude, status))
         
         conn.commit()
         conn.close()
@@ -1609,6 +1323,151 @@ def debug_data():
         """
     except Exception as e:
         return f"<h1>Error</h1><p>{str(e)}</p>"
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def get_matches_for_company(company_id, top_n=10):
+    """Score every school for a given company and return top_n matches.
+
+    Weights (total 100):
+      60 pts – distance (linear 0-25 km; 0 beyond)
+      20 pts – preferred area match
+      10 pts – DEIS school
+      10 pts – enrolment (capped at 600 pupils)
+      override – if school name matches preferred_school → 100 pts flat
+
+    Returns list of (school_dict, score_dict) tuples.
+    score_dict keys: total_score, distance_km, distance_score, area_score,
+                     deis_score, enrolment_score, is_preferred_match, outside_radius
+    """
+    companies = get_all_companies()
+    company = next((c for c in companies if c['id'] == company_id), None)
+    if company is None:
+        return []
+
+    schools = get_all_schools()
+    preferred_name = (company.get('preferred_school') or '').strip().lower()
+    preferred_area = (company.get('preferred_area') or '').strip().lower()
+    c_lat = company.get('latitude')
+    c_lon = company.get('longitude')
+
+    results = []
+    for school in schools:
+        is_preferred = bool(preferred_name and preferred_name in (school.get('school_name') or '').lower())
+
+        if is_preferred:
+            # Hard override: preferred school always tops the list
+            score = {
+                'total_score': 100.0,
+                'distance_km': None,
+                'distance_score': None,
+                'area_score': None,
+                'deis_score': None,
+                'enrolment_score': None,
+                'is_preferred_match': True,
+                'outside_radius': False,
+            }
+            results.append((school, score))
+            continue
+
+        distance_km = None
+        distance_score = 0.0
+        outside_radius = False
+        if c_lat and c_lon and school.get('latitude') and school.get('longitude'):
+            distance_km = round(_haversine_km(float(c_lat), float(c_lon),
+                                               float(school['latitude']), float(school['longitude'])), 1)
+            distance_score = round(max(0.0, 60.0 * (1 - distance_km / 25)), 1)
+            outside_radius = distance_km > 25
+
+        area_score = 0.0
+        if preferred_area:
+            if (preferred_area in (school.get('county') or '').lower()
+                    or preferred_area in (school.get('address') or '').lower()):
+                area_score = 20.0
+
+        deis_score = 10.0 if school.get('deis') == 'Y' else 0.0
+
+        enrolment = school.get('enrolment') or 0
+        enrolment_score = round(min(enrolment, 600) / 600 * 10, 1)
+
+        total = round(distance_score + area_score + deis_score + enrolment_score, 1)
+
+        score = {
+            'total_score': total,
+            'distance_km': distance_km,
+            'distance_score': distance_score,
+            'area_score': area_score,
+            'deis_score': deis_score,
+            'enrolment_score': enrolment_score,
+            'is_preferred_match': False,
+            'outside_radius': outside_radius,
+        }
+        results.append((school, score))
+
+    results.sort(key=lambda x: x[1]['total_score'], reverse=True)
+    return results[:top_n]
+
+
+@app.route('/match')
+def match_overview():
+    """Overview: all companies with their top 3 school matches."""
+    companies = get_all_companies()
+    overview = []
+    for company in companies:
+        matches = get_matches_for_company(company['id'], top_n=3)
+        overview.append({'company': company, 'matches': matches})
+    return render_template('match.html', overview=overview, view='overview')
+
+
+@app.route('/match/company/<int:company_id>')
+def match_detail(company_id):
+    """Detail: top 10 matches for one company."""
+    companies = get_all_companies()
+    company = next((c for c in companies if c['id'] == company_id), None)
+    if company is None:
+        return render_template('match.html', error='Company not found', view='detail',
+                               company=None, matches=[])
+    matches = get_matches_for_company(company_id, top_n=10)
+    return render_template('match.html', company=company, matches=matches, view='detail')
+
+
+@app.route('/api/geojson-markers')
+def geojson_markers():
+    from flask import jsonify
+    data_folder = app.config['DATA_FOLDER']
+    features = []
+    for path in glob.glob(os.path.join(data_folder, '*.geojson')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                geojson = json.load(f)
+            group_titles = [g.get('title', '').lower() for g in geojson.get('groups', [])]
+            if any('compan' in t for t in group_titles):
+                file_type = 'company'
+            elif any('school' in t for t in group_titles):
+                file_type = 'school'
+            else:
+                file_type = 'unknown'
+            for feature in geojson.get('features', []):
+                if feature.get('geometry', {}).get('type') != 'Point':
+                    continue
+                coords = feature['geometry']['coordinates']
+                key = _coord_key(coords[1], coords[0])
+                with _county_cache_lock:
+                    county = _county_cache.get(key)
+                feature['properties']['_type'] = file_type
+                feature['properties']['_county'] = county
+                features.append(feature)
+        except Exception:
+            pass
+    return jsonify({'type': 'FeatureCollection', 'features': features})
 
 
 if __name__ == '__main__':
