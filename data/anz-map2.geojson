@@ -1,0 +1,764 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 3887914483,
+      "geometry": { "type": "Point", "coordinates": [-8.111733, 54.649257] },
+      "properties": {
+        "title": "Abbey Vocational School",
+        "group": 3894447142,
+        "url": "https://www.avsdonegal.com/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3644623183,
+      "geometry": { "type": "Point", "coordinates": [-6.461541, 53.336325] },
+      "properties": {
+        "title": "AdamsTown Community College",
+        "group": 3894447142,
+        "url": "https://www.adamstowncc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2049107954,
+      "geometry": { "type": "Point", "coordinates": [-6.249977, 53.310558] },
+      "properties": {
+        "title": "Alexandra College",
+        "group": 3894447142,
+        "url": "https://www.alexandracollege.eu/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 446896646,
+      "geometry": { "type": "Point", "coordinates": [-6.235451, 52.93467] },
+      "properties": {
+        "title": "Avondale Community College",
+        "group": 3894447142,
+        "url": "https://www.avondalecc.net/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2172801327,
+      "geometry": { "type": "Point", "coordinates": [-6.997506, 53.904054] },
+      "properties": {
+        "title": "Bailieborough Community School",
+        "group": 3894447142,
+        "url": "http://www.bailieborocs.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 968603703,
+      "geometry": { "type": "Point", "coordinates": [-6.259637, 53.281759] },
+      "properties": {
+        "title": "Ballinteer Community School",
+        "group": 3894447142,
+        "url": "https://www.ballinteercs.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1010409460,
+      "geometry": { "type": "Point", "coordinates": [-6.170141, 53.402979] },
+      "properties": {
+        "title": "Belmayne Educate Together Secondary School",
+        "group": 3894447142,
+        "url": "https://www.belmayneetss.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4211668422,
+      "geometry": { "type": "Point", "coordinates": [-6.920214, 52.598798] },
+      "properties": {
+        "title": "Borris Mixed National school",
+        "group": 3894447142,
+        "url": "https://www.borrisns.com/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 350540394,
+      "geometry": { "type": "Point", "coordinates": [-6.783667, 53.549845] },
+      "properties": {
+        "title": "Boyne Community College",
+        "group": 3894447142,
+        "url": "https://boynecs.ie/1000015021/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4182035047,
+      "geometry": { "type": "Point", "coordinates": [-6.293675, 53.368926] },
+      "properties": {
+        "title": "Cabra Community College",
+        "group": 3894447142,
+        "url": "https://www.cabracc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1464722791,
+      "geometry": { "type": "Point", "coordinates": [-6.391263, 53.371825] },
+      "properties": {
+        "title": "Castleknock Community College",
+        "group": 3894447142,
+        "url": "https://castleknockcc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2492683472,
+      "geometry": { "type": "Point", "coordinates": [-7.698418, 52.357082] },
+      "properties": {
+        "title": "CBS High School Clonmel",
+        "group": 3894447142,
+        "url": "https://www.cbshighschoolclonmel.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2399210427,
+      "geometry": { "type": "Point", "coordinates": [-7.695793, 52.353661] },
+      "properties": {
+        "title": "Central Technical Institute",
+        "group": 3894447142,
+        "url": "https://www.cti-clonmel.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 556804450,
+      "geometry": { "type": "Point", "coordinates": [-10.02209, 53.478618] },
+      "properties": {
+        "title": "Clifden Community School",
+        "group": 3894447142,
+        "url": "https://www.clifdencommunityschool.com/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3520730202,
+      "geometry": { "type": "Point", "coordinates": [-6.402908, 53.324026] },
+      "properties": {
+        "title": "Coláiste Chilliain",
+        "group": 3894447142,
+        "url": "https://colaistechilliain.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1864035278,
+      "geometry": { "type": "Point", "coordinates": [-6.29833, 53.285408] },
+      "properties": {
+        "title": "Coláiste Éanna C.B.S.",
+        "group": 3894447142,
+        "url": "https://www.colaisteeanna.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1983776793,
+      "geometry": { "type": "Point", "coordinates": [-7.346854, 53.526977] },
+      "properties": {
+        "title": "Colaiste Mhuire",
+        "group": 3894447142,
+        "url": "https://colaistemhuire.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1464249175,
+      "geometry": { "type": "Point", "coordinates": [-8.621468, 52.660289] },
+      "properties": {
+        "title": "Coláiste Nano Nagle",
+        "group": 3894447142,
+        "url": "https://colaistenanonagle.ie/home.html",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1220568469,
+      "geometry": { "type": "Point", "coordinates": [-6.43243, 53.356907] },
+      "properties": {
+        "title": "Coláiste Phádraig CBS",
+        "group": 3894447142,
+        "url": "https://www.colaistephadraiglucan.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 34418950,
+      "geometry": { "type": "Point", "coordinates": [-6.54991, 53.513565] },
+      "properties": {
+        "title": "Dunshaughlin Community College",
+        "group": 3894447142,
+        "url": "https://www.dunshaughlincc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2888726875,
+      "geometry": { "type": "Point", "coordinates": [-6.809077, 53.160239] },
+      "properties": {
+        "title": "Early Years Pre-School",
+        "group": 3894447142,
+        "url": "https://www.kare.ie/childrens",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4157191705,
+      "geometry": { "type": "Point", "coordinates": [-7.735438, 54.951793] },
+      "properties": {
+        "title": "Errigal College",
+        "group": 3894447142,
+        "url": "https://errigalcollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3795680034,
+      "geometry": { "type": "Point", "coordinates": [-8.610417, 52.665951] },
+      "properties": {
+        "title": "Gaelcholáiste Luimnigh",
+        "group": 3894447142,
+        "url": "https://gcluimnigh.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2997837975,
+      "geometry": { "type": "Point", "coordinates": [-6.06313, 53.122999] },
+      "properties": {
+        "title": "Greystones Community College",
+        "group": 3894447142,
+        "url": "https://www.greystonescollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1183065407,
+      "geometry": { "type": "Point", "coordinates": [-8.850244, 53.517755] },
+      "properties": {
+        "title": "High Cross College",
+        "group": 3894447142,
+        "url": "https://www.highcrosscollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 805130443,
+      "geometry": { "type": "Point", "coordinates": [-9.518837, 52.062471] },
+      "properties": {
+        "title": "Killarney community college",
+        "group": 3894447142,
+        "url": "https://www.killarneycc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3907833334,
+      "geometry": { "type": "Point", "coordinates": [-6.397458, 53.276545] },
+      "properties": {
+        "title": "Killnarden Community School",
+        "group": 3894447142,
+        "url": "https://www.killinardencs.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4225250628,
+      "geometry": { "type": "Point", "coordinates": [-6.371648, 53.30574] },
+      "properties": {
+        "title": "Kingswood Community College",
+        "group": 3894447142,
+        "url": "https://www.kingswoodcc.com/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1768535079,
+      "geometry": { "type": "Point", "coordinates": [-6.424722, 53.336201] },
+      "properties": {
+        "title": "Kishoge Community College",
+        "group": 3894447142,
+        "url": "https://www.kishogecc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4115507091,
+      "geometry": { "type": "Point", "coordinates": [-6.37286, 53.389638] },
+      "properties": {
+        "title": "Le Cheile Secondary School",
+        "group": 3894447142,
+        "url": "https://lecheilesecondaryschool.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1694860261,
+      "geometry": { "type": "Point", "coordinates": [-8.979934, 52.841159] },
+      "properties": {
+        "title": "Limerick and Clare Education and Training Board in Adult Education",
+        "group": 3894447142,
+        "url": "https://lcetb.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2205188412,
+      "geometry": { "type": "Point", "coordinates": [-8.576317, 52.653932] },
+      "properties": {
+        "title": "Limerick Educate Together Secondary School",
+        "group": 3894447142,
+        "url": "https://limericketss.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4271594566,
+      "geometry": { "type": "Point", "coordinates": [-6.064296, 53.144445] },
+      "properties": {
+        "title": "Little Stars on the Lane",
+        "group": 3894447142,
+        "url": "https://www.starsonthelane.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 51833219,
+      "geometry": { "type": "Point", "coordinates": [-7.302005, 53.522253] },
+      "properties": {
+        "title": "Longford Westmeath Education & Training Board.",
+        "group": 3894447142,
+        "url": "https://www.lwetb.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3942974996,
+      "geometry": { "type": "Point", "coordinates": [-6.409348, 53.374446] },
+      "properties": {
+        "title": "Luttrellstown Community College",
+        "group": 3894447142,
+        "url": "https://www.luttrellstowncc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2267025066,
+      "geometry": { "type": "Point", "coordinates": [-6.198906, 53.448179] },
+      "properties": {
+        "title": "Malahide & Portmarnock Secondary School",
+        "group": 3894447142,
+        "url": "https://www.mpetss.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1720823816,
+      "geometry": { "type": "Point", "coordinates": [-6.226615, 53.333264] },
+      "properties": {
+        "title": "Marian College",
+        "group": 3894447142,
+        "url": "https://mariancollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3103729168,
+      "geometry": { "type": "Point", "coordinates": [-8.550016, 52.658566] },
+      "properties": {
+        "title": "Monaleen NS",
+        "group": 3894447142,
+        "url": "https://monaleenns.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 485771560,
+      "geometry": { "type": "Point", "coordinates": [-6.221739, 53.368987] },
+      "properties": {
+        "title": "Mount Temple Comprehensive School",
+        "group": 3894447142,
+        "url": "https://mounttemple.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1012661531,
+      "geometry": { "type": "Point", "coordinates": [-6.398268, 53.319316] },
+      "properties": {
+        "title": "Moyle Park College",
+        "group": 3894447142,
+        "url": "https://moyleparkcollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1373788055,
+      "geometry": { "type": "Point", "coordinates": [-6.93553, 52.404845] },
+      "properties": {
+        "title": "New Ross Educate Together National School",
+        "group": 3894447142,
+        "url": "https://www.newrossetns.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3827772788,
+      "geometry": { "type": "Point", "coordinates": [-6.791459, 53.182262] },
+      "properties": {
+        "title": "Patrician Primary School",
+        "group": 3894447142,
+        "url": "https://www.patricianprimaryschool.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1162962176,
+      "geometry": { "type": "Point", "coordinates": [-9.581858, 51.884333] },
+      "properties": {
+        "title": "Pobalscoil Inbhear sceine Kenmare",
+        "group": 3894447142,
+        "url": "https://www.kenmarecs.com/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1426546604,
+      "geometry": { "type": "Point", "coordinates": [-7.485149, 53.276884] },
+      "properties": {
+        "title": "Sacred Heart School",
+        "group": 3894447142,
+        "url": "https://www.shstullamore.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2820112532,
+      "geometry": { "type": "Point", "coordinates": [-6.717837, 53.973901] },
+      "properties": {
+        "title": "St Louis Secondary School",
+        "group": 3894447142,
+        "url": "https://www.stlouisdundalk.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2465576402,
+      "geometry": { "type": "Point", "coordinates": [-7.41227, 52.347907] },
+      "properties": {
+        "title": "Scoil Mhuire COS",
+        "group": 3894447142,
+        "url": "https://www.scoilmhuirecos.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1058569280,
+      "geometry": { "type": "Point", "coordinates": [-6.196253, 53.382101] },
+      "properties": {
+        "title": "Scoil Neasáin",
+        "group": 3894447142,
+        "url": "https://www.scoilneasain.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3512590528,
+      "geometry": { "type": "Point", "coordinates": [-6.303381, 53.366414] },
+      "properties": {
+        "title": "St Declan's College",
+        "group": 3894447142,
+        "url": "https://www.stdeclanscollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 753916637,
+      "geometry": { "type": "Point", "coordinates": [-6.20532, 53.283077] },
+      "properties": {
+        "title": "St Raphaela's Secondary School",
+        "group": 3894447142,
+        "url": "https://www.straphaelas.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3648657649,
+      "geometry": { "type": "Point", "coordinates": [-8.478383, 54.265175] },
+      "properties": {
+        "title": "Summerhill College",
+        "group": 3894447142,
+        "url": "https://www.summerhillcollege.ie/#!/home",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2960093618,
+      "geometry": { "type": "Point", "coordinates": [-8.196515, 52.863717] },
+      "properties": {
+        "title": "Tipperary ETB",
+        "group": 3894447142,
+        "url": "https://tipperaryetb.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 525896049,
+      "geometry": { "type": "Point", "coordinates": [-6.730769, 52.799404] },
+      "properties": {
+        "title": "Tullow Community School",
+        "group": 3894447142,
+        "url": "https://www.tullowcommunityschool.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 132590008,
+      "geometry": { "type": "Point", "coordinates": [-6.244882, 53.279583] },
+      "properties": {
+        "title": "Wesley College",
+        "group": 3894447142,
+        "url": "https://www.wesleycollege.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1170816790,
+      "geometry": { "type": "Point", "coordinates": [-6.451908, 52.359797] },
+      "properties": {
+        "title": "WWETB",
+        "group": 3894447142,
+        "url": "https://www.wwetb.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2736883536,
+      "geometry": { "type": "Point", "coordinates": [-6.200399, 53.30637] },
+      "properties": {
+        "title": "Saint Andrew's College",
+        "group": 3894447142,
+        "url": "https://www.st-andrews.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3519583338,
+      "geometry": { "type": "Point", "coordinates": [-6.746241, 53.822677] },
+      "properties": {
+        "title": "Nobber National School",
+        "group": 3894447142,
+        "url": "https://www.eoinbaiste.ie/about/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4244305581,
+      "geometry": { "type": "Point", "coordinates": [-6.268258, 53.382068] },
+      "properties": {
+        "title": "North Dublin NS Project",
+        "group": 3894447142,
+        "url": "http://ndnsp.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 136292240,
+      "geometry": { "type": "Point", "coordinates": [-6.131545, 53.392267] },
+      "properties": {
+        "title": "Pobalscoil Neasáin",
+        "group": 3894447142,
+        "url": "https://psn.ie/about/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1876127634,
+      "geometry": { "type": "Point", "coordinates": [-6.224122, 53.465379] },
+      "properties": {
+        "title": "St Finian's Community School",
+        "group": 3894447142,
+        "url": "https://www.stfinianscc.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2066945297,
+      "geometry": { "type": "Point", "coordinates": [-8.615647, 52.683769] },
+      "properties": {
+        "title": "St Munchin's College",
+        "group": 3894447142,
+        "url": "https://stmunchinscollege.com/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 41336316,
+      "geometry": { "type": "Point", "coordinates": [-6.339614, 53.294488] },
+      "properties": {
+        "title": "Tallaght Community School",
+        "group": 3894447142,
+        "url": "https://tallaghtcs.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3711552342,
+      "geometry": { "type": "Point", "coordinates": [-6.25592, 53.344022] },
+      "properties": {
+        "title": "Faculty of health sciences, Trinity",
+        "group": 3894447142,
+        "url": "https://www.tcd.ie/healthsciences/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1476188407,
+      "geometry": { "type": "Point", "coordinates": [-8.15565, 52.481534] },
+      "properties": {
+        "title": "Tipperary Girls National School",
+        "group": 3894447142,
+        "url": "https://www.stmichaelsgirlsns.ie/",
+        "marker-color": "#e32c31",
+        "marker-symbol": "book"
+      }
+    }
+  ],
+  "groups": [{ "title": "Schools", "id": 3894447142 }],
+  "markers": [],
+  "properties": {}
+}

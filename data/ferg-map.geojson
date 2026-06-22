@@ -1,0 +1,1072 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 2790506494,
+      "geometry": { "type": "Point", "coordinates": [-6.136156, 53.246956] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.ie.abbott/contact.html",
+        "title": "Abbott"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 591979695,
+      "geometry": { "type": "Point", "coordinates": [-6.421492, 53.288755] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.abbvie.ie/contactus.html",
+        "title": "Abbvie"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3484468802,
+      "geometry": { "type": "Point", "coordinates": [-6.538914, 53.855309] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://abpfoodgroup.com/contact-us/",
+        "title": "ABP"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3640198318,
+      "geometry": { "type": "Point", "coordinates": [-6.238918, 53.339468] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.accenture.com/ie-en/about/contact-us",
+        "title": "Accenture"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2130082749,
+      "geometry": { "type": "Point", "coordinates": [-8.514272, 51.905571] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.apple.com/ie/contact/",
+        "title": "Apple"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4156485989,
+      "geometry": { "type": "Point", "coordinates": [-8.290337, 53.82167] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.athlone-laboratories.com/contact.html",
+        "title": "Athlone Laboratories"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2402628609,
+      "geometry": { "type": "Point", "coordinates": [-7.776922, 53.732773] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://medical.averydennison.com/en/home/contact-us.html",
+        "title": "Avery Dennison"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2046618499,
+      "geometry": { "type": "Point", "coordinates": [-7.17056, 52.2425] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.bausch.com/about-bausch-lomb/contact-us/",
+        "title": "Bausch & Lomb"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1847956924,
+      "geometry": { "type": "Point", "coordinates": [-6.796858, 53.179333] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.bnm.ie/who-we-are/contact/",
+        "title": "Bord na Móna"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3204103417,
+      "geometry": { "type": "Point", "coordinates": [-7.35, 53.53333] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://cdfoods.com/get-in-touch/",
+        "title": "C&D Foods"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2157292532,
+      "geometry": { "type": "Point", "coordinates": [-9.16667, 54.11667] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.coca-cola.com/ie/en/about-us/contact-us",
+        "title": "Coca-Cola"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3995589819,
+      "geometry": { "type": "Point", "coordinates": [-6.452252, 52.328324] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.danone.com/ie/en/legal-pages/contact.html",
+        "title": "Danone"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3805318336,
+      "geometry": { "type": "Point", "coordinates": [-6.233303, 53.345623] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.dell.com/en-ie/lp/contact-us",
+        "title": "Dell"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1319270248,
+      "geometry": { "type": "Point", "coordinates": [-8.876816, 52.709462] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.eielectronics.ie/contact-us/",
+        "title": "Ei Electronics"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2090558650,
+      "geometry": { "type": "Point", "coordinates": [-6.214774, 53.275952] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.ericsson.com/en/contact/collaboration",
+        "title": "Ericsson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3435545323,
+      "geometry": { "type": "Point", "coordinates": [-6.248117, 53.337088] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.esbnetworks.ie/customer-support/contact-us/other",
+        "title": "ESB"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3819758673,
+      "geometry": { "type": "Point", "coordinates": [-9.791408, 52.106189] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.fexco.com/",
+        "title": "Fexco"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1439967824,
+      "geometry": { "type": "Point", "coordinates": [-7.22084, 52.648696] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.glanbia.com/",
+        "title": "Glanbia"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2292048351,
+      "geometry": { "type": "Point", "coordinates": [-7.321433, 53.033942] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://greenfield.com/about-us/locations/portlaoise-ireland",
+        "title": "Greenfield Global"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4123596526,
+      "geometry": { "type": "Point", "coordinates": [-8.478328, 53.767756] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.harmac.com/contact-us/",
+        "title": "Harmac Medical Products"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 50857016,
+      "geometry": { "type": "Point", "coordinates": [-7.799026, 52.95516] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://herdwatch.com/en-ie/contact-us/",
+        "title": "Herdwatch"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2463884015,
+      "geometry": { "type": "Point", "coordinates": [-6.263097, 53.332612] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.ibm.com/contact/global",
+        "title": "IBM"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4263147144,
+      "geometry": { "type": "Point", "coordinates": [-6.521457, 53.373726] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.intel.com/content/www/us/en/corporate-responsibility/corporate-responsibility.html",
+        "title": "Intel Ireland"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4288743911,
+      "geometry": { "type": "Point", "coordinates": [-6.243903, 53.332691] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jazzpharma.com/contact",
+        "title": "Jazz Pharmaceuticals"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3067123532,
+      "geometry": { "type": "Point", "coordinates": [-8.463646, 51.897862] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.johnsoncontrols.com/contact-us",
+        "title": "Johnson Controls"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4153396766,
+      "geometry": { "type": "Point", "coordinates": [-6.362376, 53.29372] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jnj.com/innovativemedicine/ireland/contact-us",
+        "title": "Johnson&Johnson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2447693028,
+      "geometry": { "type": "Point", "coordinates": [-6.668932, 53.236107] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kerry.com/contact-us",
+        "title": "Kerry Group"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3067317712,
+      "geometry": { "type": "Point", "coordinates": [-6.790665, 53.905795] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kingspangroup.com/en/contact/",
+        "title": "Kingspan"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 711443048,
+      "geometry": { "type": "Point", "coordinates": [-6.281999, 53.332495] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kirbygroup.com/contact-us/",
+        "title": "Kirby Group Engineering"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2663207780,
+      "geometry": { "type": "Point", "coordinates": [-6.264644, 53.348469] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://corporate.marksandspencer.com/contact",
+        "title": "Marks & Spencer"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3953664316,
+      "geometry": { "type": "Point", "coordinates": [-6.236561, 53.340777] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.mhc.ie/contact-us",
+        "title": "Mason Hayes & Curran"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2839128512,
+      "geometry": { "type": "Point", "coordinates": [-8.986863, 53.301987] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.medtronic.com/en-ie/contact-us.html",
+        "title": "Medtronic"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1197834655,
+      "geometry": { "type": "Point", "coordinates": [-6.257234, 53.333688] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.medtronic.com/en-ie/contact-us.html",
+        "title": "Medtronic"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2501355515,
+      "geometry": { "type": "Point", "coordinates": [-6.199277, 53.267627] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.microsoft.com/en-ie/aboutireland/map",
+        "title": "Microsoft"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3446238092,
+      "geometry": { "type": "Point", "coordinates": [-6.927545, 52.840185] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://msd-ireland.com/media/",
+        "title": "MSD"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3977365867,
+      "geometry": { "type": "Point", "coordinates": [-8.475286, 51.866062] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://musgravegroup.com/contact/",
+        "title": "Musgrave"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3237647465,
+      "geometry": { "type": "Point", "coordinates": [-6.929868, 52.840945] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://netwatchsystem.com/company/contact/",
+        "title": "Netwatch"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3366455138,
+      "geometry": { "type": "Point", "coordinates": [-7.998259, 53.423969] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://olivercarty.ie/where-to-find-us-in-ireland/",
+        "title": "OliverCarty"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3162636525,
+      "geometry": { "type": "Point", "coordinates": [-6.238804, 53.349691] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.optum.ie/contact.html",
+        "title": "Optum"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1241815898,
+      "geometry": { "type": "Point", "coordinates": [-7.73214, 54.966197] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.optum.ie/contact.html",
+        "title": "Optum"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1622588745,
+      "geometry": { "type": "Point", "coordinates": [-6.359002, 53.408035] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.paypal.com/ie/cshelp/contact-us",
+        "title": "PayPal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2367200241,
+      "geometry": { "type": "Point", "coordinates": [-6.439476, 53.326603] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.pfizer.ie/contact-us",
+        "title": "Pfizer"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1901834732,
+      "geometry": { "type": "Point", "coordinates": [-6.246681, 53.349132] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.pgim.com/us/en/institutional/about/contact-us",
+        "title": "PGIM"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1369418034,
+      "geometry": { "type": "Point", "coordinates": [-6.421522, 53.289008] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.sanofi.com/en/ireland/contact",
+        "title": "Sanofi"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3487239189,
+      "geometry": { "type": "Point", "coordinates": [-6.256792, 53.340644] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.savills.ie/contact-us/people.aspx?page=1&countrySiteId=3171&sectorId=&sortOrder=asc&nameSearchValue=&lon=&lat=&officeId=",
+        "title": "Savills"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1649169593,
+      "geometry": { "type": "Point", "coordinates": [-8.919743, 52.69905] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://snnairportgroup.ie/about-us/contact/",
+        "title": "Shannon Group"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1200595501,
+      "geometry": { "type": "Point", "coordinates": [-8.161445, 52.473484] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://tipperary-coop.com/contact/",
+        "title": "Tipperary Co-op"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3081610702,
+      "geometry": { "type": "Point", "coordinates": [-6.926113, 52.840834] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.unumgroup.com/csr/healthier-communities",
+        "title": "Unum"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2001560621,
+      "geometry": { "type": "Point", "coordinates": [-7.159967, 52.252768] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.westpharma.com/support/contact-us",
+        "title": "West Pharmaceutical Products"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2151593966,
+      "geometry": { "type": "Point", "coordinates": [-6.180727, 53.301344] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.zurich.ie/about-us/corporate-social/",
+        "title": "Zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3262101522,
+      "geometry": { "type": "Point", "coordinates": [-8.342205, 51.833949] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.pfizer.ie/contact-us",
+        "title": "Pfizer"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 434051387,
+      "geometry": { "type": "Point", "coordinates": [-8.642356, 51.877571] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.dell.com/en-ie/lp/contact-us",
+        "title": "Dell"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1610622313,
+      "geometry": { "type": "Point", "coordinates": [-8.985544, 53.301677] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.sap.com/about/company/office-locations/ireland.html",
+        "title": "SAP"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 894782077,
+      "geometry": { "type": "Point", "coordinates": [-9.007505, 53.28611] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kirbygroup.com/contact-us/",
+        "title": "Kirby Group Engineering"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1069088292,
+      "geometry": { "type": "Point", "coordinates": [-8.99985, 53.296051] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jnj.com/innovativemedicine/ireland/contact-us",
+        "title": "Johnson&Johnson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4084025373,
+      "geometry": { "type": "Point", "coordinates": [-9.709966, 52.266755] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kerry.com/contact-us",
+        "title": "Kerry Group"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4104447,
+      "geometry": { "type": "Point", "coordinates": [-6.774101, 53.187553] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.pfizer.ie/contact-us",
+        "title": "Pfizer"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3076053619,
+      "geometry": { "type": "Point", "coordinates": [-7.315791, 53.017905] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kirbygroup.com/contact-us/",
+        "title": "Kirby Group Engineering"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1190378660,
+      "geometry": { "type": "Point", "coordinates": [-8.538664, 52.672772] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jnj.com/innovativemedicine/ireland/contact-us",
+        "title": "Johnson&Johnson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3144318829,
+      "geometry": { "type": "Point", "coordinates": [-8.65698, 52.619823] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.dell.com/en-ie/lp/contact-us",
+        "title": "Dell"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 857422725,
+      "geometry": { "type": "Point", "coordinates": [-7.900291, 53.429639] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.ericsson.com/en/contact/collaboration",
+        "title": "Ericsson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 515167408,
+      "geometry": { "type": "Point", "coordinates": [-7.997252, 53.417743] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jazzpharma.com/contact",
+        "title": "Jazz Pharmaceuticals"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3977912406,
+      "geometry": { "type": "Point", "coordinates": [-8.335224, 51.830662] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jnj.com/innovativemedicine/ireland/contact-us",
+        "title": "Johnson&Johnson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1573521039,
+      "geometry": { "type": "Point", "coordinates": [-7.906051, 53.432611] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.medtronic.com/en-ie/contact-us.html",
+        "title": "Medtronic"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 37027408,
+      "geometry": { "type": "Point", "coordinates": [-8.655332, 52.623624] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.kirbygroup.com/contact-us/",
+        "title": "Kirby Group Engineering"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3215013852,
+      "geometry": { "type": "Point", "coordinates": [-7.714786, 54.961705] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.pgim.com/us/en/institutional/about/contact-us",
+        "title": "PGIM"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3074302831,
+      "geometry": { "type": "Point", "coordinates": [-7.15237, 52.25441] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.sanofi.com/en/ireland/contact",
+        "title": "Sanofi"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2606015519,
+      "geometry": { "type": "Point", "coordinates": [-8.461698, 51.900257] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.savills.ie/contact-us/people.aspx?page=1&countrySiteId=3171&sectorId=&sortOrder=asc&nameSearchValue=&lon=&lat=&officeId=",
+        "title": "Savills"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3352268726,
+      "geometry": { "type": "Point", "coordinates": [-6.457522, 52.31248] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.zurich.ie/about-us/corporate-social/",
+        "title": "Zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3519502629,
+      "geometry": { "type": "Point", "coordinates": [-9.510524, 52.06203] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.gmib.ie/contact-us",
+        "title": "GMIB Insurance"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1109476854,
+      "geometry": { "type": "Point", "coordinates": [-8.575997, 52.651566] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.northerntrust.com/europe/contact-us-corporate-overview",
+        "title": "Northern Trust"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1835717067,
+      "geometry": { "type": "Point", "coordinates": [-6.460325, 53.555746] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://taytocrisps.ie/faq/#contact-faq",
+        "title": "Tayto"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1260028500,
+      "geometry": { "type": "Point", "coordinates": [-9.77693, 52.112763] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.astellas.com/en/contact-us",
+        "title": "Astellas"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4049580075,
+      "geometry": { "type": "Point", "coordinates": [-8.667917, 52.6216] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.lilly.com/ie/who-we-are/about-lilly-limerick",
+        "title": "Eli Lilly"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3555495424,
+      "geometry": { "type": "Point", "coordinates": [-9.510967, 52.062475] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.gmib.ie/contact-us",
+        "title": "GMIB"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1347199821,
+      "geometry": { "type": "Point", "coordinates": [-8.576037, 52.651372] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.northerntrust.com/europe/contact-us-corporate-overview",
+        "title": "Northern Trust"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4192077556,
+      "geometry": { "type": "Point", "coordinates": [-9.796493, 52.104126] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://boyles.ie/",
+        "title": "Topline Boyles"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1114600119,
+      "geometry": { "type": "Point", "coordinates": [-8.647484, 52.675063] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://tus.ie/contact-us/",
+        "title": "TUS Moylish"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2020696389,
+      "geometry": { "type": "Point", "coordinates": [-10.031671, 53.488269] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.abbeyglen.ie/contact-us",
+        "title": "Abbeyglen Castle Hotel"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2837172969,
+      "geometry": { "type": "Point", "coordinates": [-9.754859, 53.622252] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://delphiadventureresort.com/contact/",
+        "title": "Delphi Resort"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1313886152,
+      "geometry": { "type": "Point", "coordinates": [-8.495222, 54.273895] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://lotusworks.com/contact-us/",
+        "title": "LotusWorks"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 133299846,
+      "geometry": { "type": "Point", "coordinates": [-10.219513, 51.95486] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://corcoransfurniture.ie/pages/cahersiveen",
+        "title": "Corcrans furniture"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 726570187,
+      "geometry": { "type": "Point", "coordinates": [-7.704399, 52.363181] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.bostonscientific.com/en-US/about-us/locations.html",
+        "title": "Boston Scientific"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1668124520,
+      "geometry": { "type": "Point", "coordinates": [-8.392268, 51.814956] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.pfizer.ie/contact-us",
+        "title": "Pfizer"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4010259901,
+      "geometry": { "type": "Point", "coordinates": [-8.642356, 51.877571] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.optum.ie/contact.html",
+        "title": "Optum"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1032309308,
+      "geometry": { "type": "Point", "coordinates": [-6.3595, 53.2877] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.jnj.com/innovativemedicine/ireland/contact-us",
+        "title": "Johnson&Johnson"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2511159325,
+      "geometry": { "type": "Point", "coordinates": [-8.630124, 52.661252] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.northerntrust.com/europe/contact-us-corporate-overview",
+        "title": "Northern Trust"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 694937714,
+      "geometry": { "type": "Point", "coordinates": [-8.667917, 52.6216] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "title": "Eli Lilly"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2438128116,
+      "geometry": { "type": "Point", "coordinates": [-8.109092, 54.6526] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.ie.abbott/",
+        "title": "Abbott Ireland"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 4082095237,
+      "geometry": { "type": "Point", "coordinates": [-6.933349, 52.383411] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.integer.net/company/our-locations/new-ross/default.aspx",
+        "title": "Integer"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3707322966,
+      "geometry": { "type": "Point", "coordinates": [-8.851287, 53.514792] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://jfcgroup.ie",
+        "title": "JFC Group"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2639232998,
+      "geometry": { "type": "Point", "coordinates": [-6.111775, 53.183062] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.takeda.com/en-ie/#Contact_Us",
+        "title": "Takeda"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 174766810,
+      "geometry": { "type": "Point", "coordinates": [-6.111012, 53.089515] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://c-meonline.com/contact-us/",
+        "title": "C ME ONLINE"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1051241281,
+      "geometry": { "type": "Point", "coordinates": [-8.19068, 53.631245] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.halcyongroup.ie/",
+        "title": "Halcyon Group"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 1254280156,
+      "geometry": { "type": "Point", "coordinates": [-7.492749, 53.274377] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "title": "Tullamore D.E.W. Distillery"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3863684737,
+      "geometry": { "type": "Point", "coordinates": [-8.109092, 54.6526] },
+      "properties": {
+        "marker-symbol": "building",
+        "group": 2540177728,
+        "url": "https://www.ie.abbott/",
+        "title": "Abbott Ireland"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2213543478,
+      "geometry": { "type": "Point", "coordinates": [-8.851287, 53.514792] },
+      "properties": {
+        "group": 2540177728,
+        "url": "https://jfcgroup.ie/",
+        "title": "JFC Group"
+      }
+    }
+  ],
+  "groups": [{ "title": "Companies", "id": 2540177728 }],
+  "markers": [],
+  "properties": {}
+}

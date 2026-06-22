@@ -15,6 +15,8 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f7fa;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Navigation Bar */
@@ -108,6 +110,7 @@
             padding: 60px 40px;
             display: flex;
             gap: 30px;
+            flex: 1;
         }
 
         /* Sidebar Navigation */
@@ -429,6 +432,8 @@
             border-radius: 12px;
             width: 90%;
             max-width: 600px;
+            max-height: 88vh;
+            overflow-y: auto;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
@@ -494,6 +499,37 @@
             justify-content: flex-end;
             margin-top: 20px;
         }
+
+        .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 40px;
+            margin-top: 60px;
+        }
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .footer-text {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .footer-link {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        .footer-link:hover { opacity: 1; }
     </style>
 </head>
 <body>
@@ -511,6 +547,7 @@
                 <li class="navbar-item"><a href="/">Home Page</a></li>
                 <li class="navbar-item"><a href="/company">Company Info</a></li>
                 <li class="navbar-item"><a href="/school">School Info</a></li>
+                <li class="navbar-item"><a href="/match">Matching</a></li>
                 <li class="navbar-item"><a href="/reference">Reference</a></li>
                 <li class="navbar-item active"><a href="/admin">Admin</a></li>
             </ul>
@@ -532,6 +569,12 @@
                     <a href="/admin/files" class="sidebar-link" id="nav-files">
                         <span class="sidebar-icon">📁</span>
                         <span>Team Files</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="confirmClear(); return false;">
+                        <span class="sidebar-icon">⚠️</span>
+                        <span>Clear Data</span>
                     </a>
                 </li>
             </ul>
@@ -574,6 +617,7 @@
                     </form>
                     <button onclick="openAddModal('company')" class="btn btn-primary">➕ Add Company</button>
                     <button onclick="openAddModal('school')" class="btn btn-primary">➕ Add School</button>
+                    <button onclick="confirmClear()" class="btn btn-danger">⚠️ Clear All Data</button>
                 </div>
             </div>
 
@@ -593,12 +637,14 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
                                     <th>Company Name</th>
                                     <th>Eircode</th>
                                     <th>Address</th>
+                                    <th>Preferred School</th>
+                                    <th>Preferred Area</th>
                                     <th>Contact Name</th>
                                     <th>Contact Email</th>
+                                    <th>Donation (€)</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -606,15 +652,18 @@
                             <tbody>
                                 {% for company in companies %}
                                 <tr>
-                                    <td>{{ company.id }}</td>
                                     <td>{{ company.company_name }}</td>
                                     <td>{{ company.eircode or '' }}</td>
                                     <td>{{ company.address or '' }}</td>
+                                    <td>{{ company.preferred_school or '' }}</td>
+                                    <td>{{ company.preferred_area or '' }}</td>
                                     <td>{{ company.contact_name or '' }}</td>
                                     <td>{{ company.contact_email or '' }}</td>
+                                    <td>{{ company.donation_amount or '' }}</td>
                                     <td>{{ company.status or 'pending' }}</td>
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <button class="action-btn edit-btn" onclick='editCompany({{ company | tojson }})'>Edit</button>
+                                        <button class="action-btn delete-btn" onclick="deleteCompany({{ company.id }})">Delete</button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -650,8 +699,9 @@
                                     <td>{{ school.email or '' }}</td>
                                     <td>{{ school.phone or '' }}</td>
                                     <td>{{ school.status or 'active' }}</td>
-                                    <td>
+                                    <td style="white-space:nowrap;">
                                         <button class="action-btn edit-btn" onclick='editSchool({{ school | tojson }})'>Edit</button>
+                                        <button class="action-btn delete-btn" onclick="deleteSchool({{ school.id }})">Delete</button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -701,6 +751,10 @@
                     <input type="email" id="companyContactEmail" name="contact_email">
                 </div>
                 <div class="form-group">
+                    <label>Donation Amount (€)</label>
+                    <input type="number" id="companyDonationAmount" name="donation_amount" min="0" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
                     <label>Status</label>
                     <select id="companyStatus" name="status">
                         <option value="pending">Pending</option>
@@ -730,8 +784,37 @@
                     <input type="text" id="schoolName" name="school_name" required>
                 </div>
                 <div class="form-group">
+                    <label>Eircode</label>
+                    <input type="text" id="schoolEircode" name="eircode" placeholder="e.g. D02 PN40">
+                </div>
+                <div class="form-group">
                     <label>Address</label>
                     <textarea id="schoolAddress" name="address" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>County</label>
+                    <input type="text" id="schoolCounty" name="county" placeholder="e.g. Dublin">
+                </div>
+                <div class="form-group">
+                    <label>School Level</label>
+                    <select id="schoolLevel" name="school_level">
+                        <option value="">— Select —</option>
+                        <option value="Primary">Primary</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="Special">Special</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>DEIS</label>
+                    <select id="schoolDeis" name="deis">
+                        <option value="">— Select —</option>
+                        <option value="Y">Yes</option>
+                        <option value="N">No</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Enrolment</label>
+                    <input type="number" id="schoolEnrolment" name="enrolment" min="0" placeholder="Number of students">
                 </div>
                 <div class="form-group">
                     <label>Email</label>
@@ -742,7 +825,7 @@
                     <input type="text" id="schoolPhone" name="phone">
                 </div>
                 <div class="form-group">
-                    <label>Contact Info</label>
+                    <label>Contact Info (Principal)</label>
                     <textarea id="schoolContactInfo" name="contact_info" rows="2"></textarea>
                 </div>
                 <div class="form-group">
@@ -803,6 +886,7 @@
             document.getElementById('companyPreferredArea').value = company.preferred_area || '';
             document.getElementById('companyContactName').value = company.contact_name || '';
             document.getElementById('companyContactEmail').value = company.contact_email || '';
+            document.getElementById('companyDonationAmount').value = company.donation_amount || '';
             document.getElementById('companyStatus').value = company.status || 'pending';
             document.getElementById('companyModal').style.display = 'block';
         }
@@ -811,7 +895,12 @@
             document.getElementById('schoolModalTitle').textContent = 'Edit School';
             document.getElementById('schoolId').value = school.id;
             document.getElementById('schoolName').value = school.school_name || '';
+            document.getElementById('schoolEircode').value = school.eircode || '';
             document.getElementById('schoolAddress').value = school.address || '';
+            document.getElementById('schoolCounty').value = school.county || '';
+            document.getElementById('schoolLevel').value = school.school_level || '';
+            document.getElementById('schoolDeis').value = school.deis || '';
+            document.getElementById('schoolEnrolment').value = school.enrolment || '';
             document.getElementById('schoolEmail').value = school.email || '';
             document.getElementById('schoolPhone').value = school.phone || '';
             document.getElementById('schoolContactInfo').value = school.contact_info || '';
@@ -832,12 +921,46 @@
             });
         });
 
-        // Close modal when clicking outside
+        function deleteCompany(id) {
+            if (confirm('Are you sure you want to delete this company?')) {
+                window.location.href = '/admin/company/delete/' + id;
+            }
+        }
+
+        function deleteSchool(id) {
+            if (confirm('Are you sure you want to delete this school?')) {
+                window.location.href = '/admin/school/delete/' + id;
+            }
+        }
+
+        function confirmClear() {
+            if (confirm('⚠️ WARNING: This will delete ALL data. Are you sure?')) {
+                if (confirm('This action cannot be undone. Continue?')) {
+                    window.location.href = '/admin/clear';
+                }
+            }
+        }
+
         window.onclick = function(event) {
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
             }
         }
     </script>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p class="footer-text">© 2026 Fidelity & Elephant in the Room Partnership. All rights reserved.</p>
+            <p class="footer-text">Fundraising Management System for Educational Initiatives</p>
+            <div class="footer-links">
+                <a href="/" class="footer-link">Dashboard</a>
+                <a href="/company" class="footer-link">Companies</a>
+                <a href="/school" class="footer-link">Schools</a>
+                <a href="/match" class="footer-link">Matching</a>
+                <a href="/reference" class="footer-link">Reference</a>
+                <a href="/admin" class="footer-link">Admin</a>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>
