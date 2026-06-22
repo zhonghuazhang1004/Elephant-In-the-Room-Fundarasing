@@ -11,6 +11,8 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f7fa;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Navigation Bar */
@@ -50,7 +52,7 @@
         .navbar-item.active a { color: #36943b; border-bottom-color: #36943b; }
 
         /* Layout */
-        .container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; flex: 1; }
         .header { text-align: center; color: #36943b; margin-bottom: 30px; }
         .header h1 { font-size: 42px; margin-bottom: 10px; font-weight: 700; }
         .header p { color: #666; font-size: 16px; }
@@ -142,6 +144,37 @@
             padding: 20px; border-radius: 5px; color: #721c24;
         }
         .no-data { text-align: center; color: #999; padding: 30px; font-size: 15px; }
+
+        .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 40px;
+            margin-top: 60px;
+        }
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .footer-text {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .footer-link {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        .footer-link:hover { opacity: 1; }
     </style>
 </head>
 <body>
@@ -161,6 +194,7 @@
             <li class="navbar-item"><a href="/company">Company Info</a></li>
             <li class="navbar-item"><a href="/school">School Info</a></li>
             <li class="navbar-item active"><a href="/match">Matching</a></li>
+            <li class="navbar-item"><a href="/reference">Reference</a></li>
             <li class="navbar-item"><a href="/admin">Admin</a></li>
         </ul>
     </div>
@@ -341,5 +375,20 @@
 {% endif %}
 
 </div>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p class="footer-text">© 2026 Fidelity & Elephant in the Room Partnership. All rights reserved.</p>
+            <p class="footer-text">Fundraising Management System for Educational Initiatives</p>
+            <div class="footer-links">
+                <a href="/" class="footer-link">Dashboard</a>
+                <a href="/company" class="footer-link">Companies</a>
+                <a href="/school" class="footer-link">Schools</a>
+                <a href="/match" class="footer-link">Matching</a>
+                <a href="/reference" class="footer-link">Reference</a>
+                <a href="/admin" class="footer-link">Admin</a>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

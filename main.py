@@ -3,6 +3,8 @@ import pandas as pd
 import os
 import glob
 import math
+import json
+import threading
 import requests
 import time
 import config
@@ -26,6 +28,83 @@ database.init_db()
 database.migrate_database()
 
 _nominatim_last_call = 0.0
+
+# --- County cache (Nominatim reverse geocoding) ---
+_COUNTY_CACHE_FILE = os.path.join('data', 'county_cache.json')
+_county_cache_lock = threading.Lock()
+
+def _load_county_cache():
+    try:
+        with open(_COUNTY_CACHE_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_county_cache(cache):
+    try:
+        with open(_COUNTY_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+_county_cache = _load_county_cache()
+
+def _reverse_geocode_county(lat, lon):
+    """Single Nominatim reverse geocode call — returns county string or None."""
+    global _nominatim_last_call
+    elapsed = time.time() - _nominatim_last_call
+    if elapsed < 1.1:
+        time.sleep(1.1 - elapsed)
+    try:
+        resp = requests.get(
+            'https://nominatim.openstreetmap.org/reverse',
+            params={'lat': lat, 'lon': lon, 'format': 'json'},
+            headers={'User-Agent': 'ElephantInTheRoom/1.0 (fundraising-tool)'},
+            timeout=10
+        )
+        _nominatim_last_call = time.time()
+        addr = resp.json().get('address', {})
+        return (addr.get('county')
+                or addr.get('state_district')
+                or addr.get('state')
+                or None)
+    except Exception:
+        _nominatim_last_call = time.time()
+        return None
+
+def _coord_key(lat, lon):
+    return f'{round(lat, 4)},{round(lon, 4)}'
+
+def _build_county_cache_bg():
+    """Background thread: fills county cache for all GeoJSON points."""
+    global _county_cache
+    data_folder = app.config['DATA_FOLDER']
+    changed = False
+    for path in glob.glob(os.path.join(data_folder, '*.geojson')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                geojson = json.load(f)
+            for feature in geojson.get('features', []):
+                if feature.get('geometry', {}).get('type') != 'Point':
+                    continue
+                coords = feature['geometry']['coordinates']
+                lat, lon = coords[1], coords[0]
+                key = _coord_key(lat, lon)
+                with _county_cache_lock:
+                    already_cached = key in _county_cache
+                if already_cached:
+                    continue
+                county = _reverse_geocode_county(lat, lon)
+                with _county_cache_lock:
+                    _county_cache[key] = county
+                changed = True
+        except Exception:
+            pass
+    if changed:
+        with _county_cache_lock:
+            _save_county_cache(_county_cache)
+
+threading.Thread(target=_build_county_cache_bg, daemon=True).start()
 
 
 def _nominatim_request(params):
@@ -806,13 +885,15 @@ def save_company():
         
         company_id = request.form.get('id')
         company_name = request.form.get('company_name')
-        eircode = request.form.get('eircode')
-        address = request.form.get('address')
-        preferred_school = request.form.get('preferred_school')
-        preferred_area = request.form.get('preferred_area')
-        contact_name = request.form.get('contact_name')
-        contact_email = request.form.get('contact_email')
+        eircode = request.form.get('eircode') or None
+        address = request.form.get('address') or None
+        preferred_school = request.form.get('preferred_school') or None
+        preferred_area = request.form.get('preferred_area') or None
+        contact_name = request.form.get('contact_name') or None
+        contact_email = request.form.get('contact_email') or None
         status = request.form.get('status', 'pending')
+        donation_raw = request.form.get('donation_amount')
+        donation_amount = float(donation_raw) if donation_raw and donation_raw.strip() else 0.0
         
         try:
             latitude, longitude = geocode_location(eircode=eircode, address=address)
@@ -823,24 +904,26 @@ def save_company():
                                    **get_admin_stats())
 
         if company_id:
-            # Update existing record
             cursor.execute('''
-                UPDATE companies 
+                UPDATE companies
                 SET company_name = ?, eircode = ?, address = ?, latitude = ?, longitude = ?,
-                    preferred_school = ?, preferred_area = ?, contact_name = ?, 
-                    contact_email = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                    preferred_school = ?, preferred_area = ?, contact_name = ?,
+                    contact_email = ?, status = ?, donation_amount = ?,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             ''', (company_name, eircode, address, latitude, longitude,
-                  preferred_school, preferred_area, contact_name, contact_email, status, company_id))
+                  preferred_school, preferred_area, contact_name, contact_email,
+                  status, donation_amount, company_id))
         else:
-            # Insert new record
             cursor.execute('''
-                INSERT INTO companies 
+                INSERT INTO companies
                 (company_name, eircode, address, latitude, longitude,
-                 preferred_school, preferred_area, contact_name, contact_email, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 preferred_school, preferred_area, contact_name, contact_email,
+                 status, donation_amount)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (company_name, eircode, address, latitude, longitude,
-                  preferred_school, preferred_area, contact_name, contact_email, status))
+                  preferred_school, preferred_area, contact_name, contact_email,
+                  status, donation_amount))
         
         conn.commit()
         conn.close()
@@ -888,11 +971,18 @@ def save_school():
 
         school_id = request.form.get('id')
         school_name = request.form.get('school_name')
+        roll_number = request.form.get('roll_number') or None
         eircode = request.form.get('eircode') or None
-        address = request.form.get('address')
-        email = request.form.get('email')
-        phone = request.form.get('phone')
-        contact_info = request.form.get('contact_info')
+        address = request.form.get('address') or None
+        county = request.form.get('county') or None
+        email = request.form.get('email') or None
+        phone = request.form.get('phone') or None
+        contact_info = request.form.get('contact_info') or None
+        deis = request.form.get('deis') or None
+        school_type = request.form.get('school_type') or None
+        school_level = request.form.get('school_level') or None
+        enrolment_raw = request.form.get('enrolment')
+        enrolment = int(enrolment_raw) if enrolment_raw and enrolment_raw.strip().isdigit() else None
         status = request.form.get('status', 'active')
 
         try:
@@ -906,20 +996,27 @@ def save_school():
         if school_id:
             cursor.execute('''
                 UPDATE schools
-                SET school_name = ?, eircode = ?, address = ?, email = ?, phone = ?,
-                    contact_info = ?, latitude = ?, longitude = ?,
-                    status = ?, updated_at = CURRENT_TIMESTAMP
+                SET school_name = ?, roll_number = ?, eircode = ?, address = ?, county = ?,
+                    email = ?, phone = ?, contact_info = ?,
+                    deis = ?, school_type = ?, school_level = ?, enrolment = ?,
+                    latitude = ?, longitude = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            ''', (school_name, eircode, address, email, phone,
-                  contact_info, latitude, longitude, status, school_id))
+            ''', (school_name, roll_number, eircode, address, county,
+                  email, phone, contact_info,
+                  deis, school_type, school_level, enrolment,
+                  latitude, longitude, status, school_id))
         else:
             cursor.execute('''
                 INSERT INTO schools
-                (school_name, eircode, address, email, phone, contact_info,
+                (school_name, roll_number, eircode, address, county,
+                 email, phone, contact_info,
+                 deis, school_type, school_level, enrolment,
                  latitude, longitude, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (school_name, eircode, address, email, phone,
-                  contact_info, latitude, longitude, status))
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (school_name, roll_number, eircode, address, county,
+                  email, phone, contact_info,
+                  deis, school_type, school_level, enrolment,
+                  latitude, longitude, status))
         
         conn.commit()
         conn.close()
@@ -1228,6 +1325,97 @@ def debug_data():
         return f"<h1>Error</h1><p>{str(e)}</p>"
 
 
+def _haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def get_matches_for_company(company_id, top_n=10):
+    """Score every school for a given company and return top_n matches.
+
+    Weights (total 100):
+      60 pts – distance (linear 0-25 km; 0 beyond)
+      20 pts – preferred area match
+      10 pts – DEIS school
+      10 pts – enrolment (capped at 600 pupils)
+      override – if school name matches preferred_school → 100 pts flat
+
+    Returns list of (school_dict, score_dict) tuples.
+    score_dict keys: total_score, distance_km, distance_score, area_score,
+                     deis_score, enrolment_score, is_preferred_match, outside_radius
+    """
+    companies = get_all_companies()
+    company = next((c for c in companies if c['id'] == company_id), None)
+    if company is None:
+        return []
+
+    schools = get_all_schools()
+    preferred_name = (company.get('preferred_school') or '').strip().lower()
+    preferred_area = (company.get('preferred_area') or '').strip().lower()
+    c_lat = company.get('latitude')
+    c_lon = company.get('longitude')
+
+    results = []
+    for school in schools:
+        is_preferred = bool(preferred_name and preferred_name in (school.get('school_name') or '').lower())
+
+        if is_preferred:
+            # Hard override: preferred school always tops the list
+            score = {
+                'total_score': 100.0,
+                'distance_km': None,
+                'distance_score': None,
+                'area_score': None,
+                'deis_score': None,
+                'enrolment_score': None,
+                'is_preferred_match': True,
+                'outside_radius': False,
+            }
+            results.append((school, score))
+            continue
+
+        distance_km = None
+        distance_score = 0.0
+        outside_radius = False
+        if c_lat and c_lon and school.get('latitude') and school.get('longitude'):
+            distance_km = round(_haversine_km(float(c_lat), float(c_lon),
+                                               float(school['latitude']), float(school['longitude'])), 1)
+            distance_score = round(max(0.0, 60.0 * (1 - distance_km / 25)), 1)
+            outside_radius = distance_km > 25
+
+        area_score = 0.0
+        if preferred_area:
+            if (preferred_area in (school.get('county') or '').lower()
+                    or preferred_area in (school.get('address') or '').lower()):
+                area_score = 20.0
+
+        deis_score = 10.0 if school.get('deis') == 'Y' else 0.0
+
+        enrolment = school.get('enrolment') or 0
+        enrolment_score = round(min(enrolment, 600) / 600 * 10, 1)
+
+        total = round(distance_score + area_score + deis_score + enrolment_score, 1)
+
+        score = {
+            'total_score': total,
+            'distance_km': distance_km,
+            'distance_score': distance_score,
+            'area_score': area_score,
+            'deis_score': deis_score,
+            'enrolment_score': enrolment_score,
+            'is_preferred_match': False,
+            'outside_radius': outside_radius,
+        }
+        results.append((school, score))
+
+    results.sort(key=lambda x: x[1]['total_score'], reverse=True)
+    return results[:top_n]
+
+
 @app.route('/match')
 def match_overview():
     """Overview: all companies with their top 3 school matches."""
@@ -1249,6 +1437,37 @@ def match_detail(company_id):
                                company=None, matches=[])
     matches = get_matches_for_company(company_id, top_n=10)
     return render_template('match.html', company=company, matches=matches, view='detail')
+
+
+@app.route('/api/geojson-markers')
+def geojson_markers():
+    from flask import jsonify
+    data_folder = app.config['DATA_FOLDER']
+    features = []
+    for path in glob.glob(os.path.join(data_folder, '*.geojson')):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                geojson = json.load(f)
+            group_titles = [g.get('title', '').lower() for g in geojson.get('groups', [])]
+            if any('compan' in t for t in group_titles):
+                file_type = 'company'
+            elif any('school' in t for t in group_titles):
+                file_type = 'school'
+            else:
+                file_type = 'unknown'
+            for feature in geojson.get('features', []):
+                if feature.get('geometry', {}).get('type') != 'Point':
+                    continue
+                coords = feature['geometry']['coordinates']
+                key = _coord_key(coords[1], coords[0])
+                with _county_cache_lock:
+                    county = _county_cache.get(key)
+                feature['properties']['_type'] = file_type
+                feature['properties']['_county'] = county
+                features.append(feature)
+        except Exception:
+            pass
+    return jsonify({'type': 'FeatureCollection', 'features': features})
 
 
 if __name__ == '__main__':
