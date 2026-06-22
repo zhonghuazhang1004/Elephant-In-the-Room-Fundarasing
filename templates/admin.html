@@ -747,6 +747,10 @@
                     <input type="text" id="schoolName" name="school_name" required>
                 </div>
                 <div class="form-group">
+                    <label>Eircode</label>
+                    <input type="text" id="schoolEircode" name="eircode" placeholder="e.g. D02 PN40">
+                </div>
+                <div class="form-group">
                     <label>Address</label>
                     <textarea id="schoolAddress" name="address" rows="3"></textarea>
                 </div>
@@ -828,6 +832,7 @@
             document.getElementById('schoolModalTitle').textContent = 'Edit School';
             document.getElementById('schoolId').value = school.id;
             document.getElementById('schoolName').value = school.school_name || '';
+            document.getElementById('schoolEircode').value = school.eircode || '';
             document.getElementById('schoolAddress').value = school.address || '';
             document.getElementById('schoolEmail').value = school.email || '';
             document.getElementById('schoolPhone').value = school.phone || '';

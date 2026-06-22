@@ -5,7 +5,6 @@ import glob
 import math
 import requests
 import time
-import random
 import config
 import database  # Import database module
 from werkzeug.utils import secure_filename
@@ -27,76 +26,82 @@ database.init_db()
 
 _nominatim_last_call = 0.0
 
-ROUTING_KEY_COORDS = {
-    'D01': (53.3498, -6.2603), 'D02': (53.3441, -6.2675), 'D03': (53.3515, -6.2540),
-    'D04': (53.3308, -6.2419), 'D05': (53.3378, -6.2512), 'D06': (53.3278, -6.2597),
-    'D07': (53.3467, -6.2756), 'D08': (53.3425, -6.2812), 'D09': (53.3698, -6.2456),
-    'D10': (53.3345, -6.2934), 'D11': (53.3389, -6.3012), 'D12': (53.3156, -6.2789),
-    'D13': (53.3712, -6.1789), 'D14': (53.3234, -6.2234), 'D15': (53.3889, -6.3456),
-    'D16': (53.2978, -6.2123), 'D17': (53.3567, -6.1234), 'D18': (53.2789, -6.1567),
-    'D20': (53.4123, -6.3789), 'D22': (53.3456, -6.3912), 'D24': (53.2912, -6.3345),
-    'W23': (53.2189, -6.6756), 'W12': (53.3456, -6.4567), 'W34': (53.5234, -7.3456),
-    'A65': (53.4567, -7.8901), 'A42': (53.8901, -6.7234), 'A82': (54.0234, -6.4567),
-    'C15': (54.6789, -7.7234), 'F12': (54.2345, -7.6789), 'G12': (53.2678, -9.0123),
-    'H12': (52.6789, -8.6234), 'K15': (52.8901, -9.5678), 'P12': (51.8901, -8.4567),
-    'T12': (52.2345, -7.1234), 'Y14': (52.7890, -7.5678),
-}
 
-
-def _nominatim_search(query):
-    """Single Nominatim request with 1 RPS rate limiting."""
+def _nominatim_request(params):
+    """Single Nominatim request with 1 RPS rate limiting. params is a dict."""
     global _nominatim_last_call
     elapsed = time.time() - _nominatim_last_call
     if elapsed < 1.0:
         time.sleep(1.0 - elapsed)
-    url = f"https://nominatim.openstreetmap.org/search?q={query}&format=json&limit=5"
-    response = requests.get(url, headers={'User-Agent': 'ElephantFundraising/1.0'}, timeout=10)
+    base_params = {'format': 'jsonv2', 'limit': 5, 'countrycodes': 'ie'}
+    base_params.update(params)
+    response = requests.get(
+        'https://nominatim.openstreetmap.org/search',
+        params=base_params,
+        headers={'User-Agent': 'ElephantFundraising/1.0'},
+        timeout=10,
+    )
     _nominatim_last_call = time.time()
     if response.status_code == 200:
         return response.json()
     return []
 
 
-def convert_eircode_to_address(eircode):
-    """
-    Convert an Eircode to latitude,longitude using Nominatim (OpenStreetMap).
-    Falls back to routing-key centroid if Nominatim returns no result.
+def _ireland_coords(results):
+    """Extract first valid Irish (lat, lon) from a Nominatim result list."""
+    for r in results:
+        try:
+            lat, lon = float(r['lat']), float(r['lon'])
+            if 51.4 <= lat <= 55.4 and -10.7 <= lon <= -5.4:
+                return lat, lon
+        except (KeyError, ValueError):
+            continue
+    return None, None
 
-    Returns:
-        String "lat, lon" or empty string if not found.
+
+def geocode_location(eircode=None, address=None):
     """
+    Resolve coordinates for a manually entered record.
+    Tries in order:
+      1. Nominatim free-text address search (if address given)
+      2. Nominatim postalcode search (if eircode given)
+    Returns (lat, lon) floats or raises ValueError if nothing found.
+    """
+    if address and str(address).strip():
+        try:
+            results = _nominatim_request({'q': str(address).strip()})
+            lat, lon = _ireland_coords(results)
+            if lat is not None:
+                return lat, lon
+        except Exception as e:
+            print(f"Nominatim address error for {address}: {e}")
+
+    eircode_str = str(eircode).strip().upper() if eircode else ''
+    if eircode_str:
+        if len(eircode_str) == 7 and ' ' not in eircode_str:
+            eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
+        else:
+            eircode_formatted = eircode_str
+        try:
+            results = _nominatim_request({'postalcode': eircode_formatted})
+            lat, lon = _ireland_coords(results)
+            if lat is not None:
+                return lat, lon
+        except Exception as e:
+            print(f"Nominatim postalcode error for {eircode}: {e}")
+
+    raise ValueError(f"Could not find coordinates for address='{address}', eircode='{eircode}'")
+
+
+def convert_eircode_to_address(eircode):
+    """Convert an Eircode to 'lat, lon' string for batch import. Returns '' if not found."""
     if pd.isna(eircode) or str(eircode).strip() == '':
         return ''
-
-    eircode_str = str(eircode).strip().upper()
-    if len(eircode_str) == 7 and ' ' not in eircode_str:
-        eircode_formatted = eircode_str[:3] + ' ' + eircode_str[3:]
-    else:
-        eircode_formatted = eircode_str
-
     try:
-        query = eircode_formatted.replace(' ', '+') + '+Ireland'
-        results = _nominatim_search(query)
-        for result in results:
-            display_name = result.get('display_name', '').lower()
-            if 'ireland' in display_name and 'united kingdom' not in display_name:
-                lat = float(result.get('lat', 0))
-                lon = float(result.get('lon', 0))
-                # Ireland bounds: lat 51.4–55.4, lon -10.7 to -5.4
-                if 51.4 <= lat <= 55.4 and -10.7 <= lon <= -5.4:
-                    return f"{lat}, {lon}"
-    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-        pass
-    except Exception as e:
-        print(f"Error converting {eircode}: {e}")
-
-    # Fallback: routing-key centroid with small random offset
-    routing_key = eircode_str[:3]
-    if routing_key in ROUTING_KEY_COORDS:
-        lat, lon = ROUTING_KEY_COORDS[routing_key]
-        return f"{lat + random.uniform(-0.01, 0.01)}, {lon + random.uniform(-0.01, 0.01)}"
-
-    return ''
+        lat, lon = geocode_location(eircode=eircode)
+        return f"{lat}, {lon}"
+    except ValueError:
+        return ''
 
 
 def convert_eircode_batch(eircodes, delay=0.2):
@@ -879,20 +884,14 @@ def save_company():
         contact_email = request.form.get('contact_email')
         status = request.form.get('status', 'pending')
         
-        # Get coordinates if eircode provided
-        latitude = None
-        longitude = None
-        if eircode:
-            coords_str = convert_eircode_to_address(eircode)
-            if coords_str and ',' in coords_str:
-                parts = coords_str.split(',')
-                if len(parts) == 2:
-                    try:
-                        latitude = float(parts[0].strip())
-                        longitude = float(parts[1].strip())
-                    except:
-                        pass
-        
+        try:
+            latitude, longitude = geocode_location(eircode=eircode, address=address)
+        except ValueError as e:
+            return render_template('admin.html',
+                                   message=f'✗ Location not found: {e}. Please check the address or Eircode.',
+                                   success=False,
+                                   **get_admin_stats())
+
         if company_id:
             # Update existing record
             cursor.execute('''
@@ -956,30 +955,41 @@ def save_school():
     try:
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        
+
         school_id = request.form.get('id')
         school_name = request.form.get('school_name')
+        eircode = request.form.get('eircode') or None
         address = request.form.get('address')
         email = request.form.get('email')
         phone = request.form.get('phone')
         contact_info = request.form.get('contact_info')
         status = request.form.get('status', 'active')
-        
+
+        try:
+            latitude, longitude = geocode_location(eircode=eircode, address=address)
+        except ValueError as e:
+            return render_template('admin.html',
+                                   message=f'✗ Location not found: {e}. Please check the address or Eircode.',
+                                   success=False,
+                                   **get_admin_stats())
+
         if school_id:
-            # Update existing record
             cursor.execute('''
-                UPDATE schools 
-                SET school_name = ?, address = ?, email = ?, phone = ?,
-                    contact_info = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                UPDATE schools
+                SET school_name = ?, eircode = ?, address = ?, email = ?, phone = ?,
+                    contact_info = ?, latitude = ?, longitude = ?,
+                    status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            ''', (school_name, address, email, phone, contact_info, status, school_id))
+            ''', (school_name, eircode, address, email, phone,
+                  contact_info, latitude, longitude, status, school_id))
         else:
-            # Insert new record
             cursor.execute('''
-                INSERT INTO schools 
-                (school_name, address, email, phone, contact_info, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (school_name, address, email, phone, contact_info, status))
+                INSERT INTO schools
+                (school_name, eircode, address, email, phone, contact_info,
+                 latitude, longitude, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (school_name, eircode, address, email, phone,
+                  contact_info, latitude, longitude, status))
         
         conn.commit()
         conn.close()
