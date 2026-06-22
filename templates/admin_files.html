@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Team Files</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 3px solid #36943b;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #36943b 0%, #2d7a32 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-primary {
+            font-size: 20px;
+            font-weight: 700;
+            color: #36943b;
+            line-height: 1.2;
+        }
+
+        .brand-secondary {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+        }
+
+        .navbar-item a {
+            display: block;
+            padding: 20px 25px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .navbar-item a:hover {
+            color: #36943b;
+            border-bottom-color: #36943b;
+            background: #f8faf8;
+        }
+
+        .navbar-item.active a {
+            color: #36943b;
+            border-bottom-color: #36943b;
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 40px;
+            gap: 30px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .sidebar-item {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .sidebar-item:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 20px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-link:hover {
+            background: #f8faf8;
+            color: #36943b;
+        }
+
+        .sidebar-link.active {
+            background: #e8f5e9;
+            color: #36943b;
+            font-weight: 600;
+            border-left: 4px solid #36943b;
+        }
+
+        .sidebar-icon {
+            font-size: 18px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        /* Message Box */
+        .message-box {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .message-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+
+        .message-error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+
+        /* Data Section */
+        .data-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Upload Form */
+        .upload-form {
+            background: #f8faf8;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .upload-form h3 {
+            margin-bottom: 15px;
+            color: #36943b;
+            font-size: 18px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group select,
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-success {
+            background: #36943b;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #2d7a32;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-table th {
+            background: #f8faf8;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8faf8;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .view-btn {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .view-btn:hover {
+            background: #bbdefb;
+        }
+
+        .edit-btn {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .edit-btn:hover {
+            background: #ffe0b2;
+        }
+
+        .delete-btn {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .delete-btn:hover {
+            background: #ffcdd2;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            background: #f8faf8;
+            border-radius: 8px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #666;
+        }
+
+        /* Footer */
+        footer {
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666;
+        }
+
+        .footer-text {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .footer-link {
+            color: #36943b;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <div class="brand-logo">E</div>
+                <div class="brand-text">
+                    <span class="brand-primary">Elephant in the Room</span>
+                    <span class="brand-secondary">Fundraising Management</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li class="navbar-item"><a href="/">Home Page</a></li>
+                <li class="navbar-item"><a href="/company">Company Info</a></li>
+                <li class="navbar-item"><a href="/school">School Info</a></li>
+                <li class="navbar-item"><a href="/reference">Reference</a></li>
+                <li class="navbar-item active"><a href="/admin">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-title">Admin Menu</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="/admin" class="sidebar-link" id="nav-dashboard">
+                        <span class="sidebar-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/admin/files" class="sidebar-link active" id="nav-files">
+                        <span class="sidebar-icon">📁</span>
+                        <span>Team Files</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="header">
+                <h1>Team Files Management</h1>
+            </div>
+
+            {% if message %}
+            <div class="message-box {{ 'message-success' if success else 'message-error' }}">
+                {{ message }}
+            </div>
+            {% endif %}
+
+            <!-- File Upload Section -->
+            <div class="data-section">
+                <div class="section-title">Upload New File</div>
+                
+                <div class="upload-form">
+                    <form method="POST" action="/team-files/upload" enctype="multipart/form-data" class="form-row">
+                        <div class="form-group">
+                            <label>Select Member</label>
+                            <select name="member_name" required>
+                                <option value="">-- Select Team Member --</option>
+                                <option value="Barrett,Leanne">Barrett, Leanne</option>
+                                <option value="Adams,Conor">Adams, Conor</option>
+                                <option value="Harevice,Anzelina">Harevice, Anzelina</option>
+                                <option value="Mcmorrow,Maeve">Mcmorrow, Maeve</option>
+                                <option value="O'Donoghue,Fergus">O'Donoghue, Fergus</option>
+                                <option value="Podynihlazov,Oleksandr">Podynihlazov, Oleksandr</option>
+                                <option value="Zhonghua,Zhang">Zhonghua, Zhang</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 2;">
+                            <label>Choose File</label>
+                            <input type="file" name="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.svg">
+                        </div>
+                        <button type="submit" class="btn btn-success">📤 Upload File</button>
+                    </form>
+                </div>
+
+                <!-- Existing Files List -->
+                {% if team_files and team_files|length > 0 %}
+                <div style="margin-bottom: 20px;">
+                    <div class="section-title" style="margin-bottom: 0;">Uploaded Files ({{ team_files|length }})</div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>File Name</th>
+                                <th>Member</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Upload Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in team_files %}
+                            <tr>
+                                <td>{{ file.id }}</td>
+                                <td><strong>{{ file.original_filename }}</strong></td>
+                                <td>{{ file.member_name }}</td>
+                                <td><span style="background: #e8f5e9; color: #36943b; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">{{ file.file_type | upper }}</span></td>
+                                <td>{{ "%.2f"|format(file.file_size / 1024) }} KB</td>
+                                <td>{{ file.uploaded_at[:10] if file.uploaded_at else 'N/A' }}</td>
+                                <td>
+                                    <a href="/team-files/download/{{ file.id }}" class="action-btn view-btn" title="Download">⬇️</a>
+                                    <button onclick="viewFileInAdmin('{{ file.id }}', '{{ file.original_filename }}', '{{ file.file_type }}')" class="action-btn edit-btn" title="Preview">👁️</button>
+                                    <form method="POST" action="/team-files/delete/{{ file.id }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this file?');">
+                                        <button type="submit" class="action-btn delete-btn" title="Delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📂</div>
+                    <p>No files uploaded yet. Use the form above to upload your first file.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p class="footer-text">
+            Fundraising Management System for Educational Initiatives
+        </p>
+        <div class="footer-links">
+            <a href="/" class="footer-link">Dashboard</a>
+            <a href="/company" class="footer-link">Companies</a>
+            <a href="/school" class="footer-link">Schools</a>
+            <a href="/reference" class="footer-link">Reference</a>
+            <a href="/admin" class="footer-link">Admin</a>
+        </div>
+    </footer>
+
+    <script>
+        // View file in admin panel
+        function viewFileInAdmin(fileId, filename, fileType) {
+            // Create modal for file preview
+            const modal = document.createElement('div');
+            modal.className = 'file-view-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content-wrapper';
+            modalContent.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                max-width: 90%;
+                max-height: 90%;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                animation: slideUp 0.3s ease;
+            `;
+            
+            const modalHeader = document.createElement('div');
+            modalHeader.className = 'modal-header';
+            modalHeader.style.cssText = `
+                padding: 20px 30px;
+                background: #f8faf8;
+                border-bottom: 2px solid #e0e0e0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+            
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = ` ${filename}`;
+            titleElement.style.cssText = `
+                margin: 0;
+                font-size: 18px;
+                color: #333;
+                font-weight: 600;
+            `;
+            
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '✕';
+            closeButton.style.cssText = `
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #999;
+                padding: 0;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                transition: all 0.3s ease;
+            `;
+            closeButton.onmouseover = () => {
+                closeButton.style.background = '#ffebee';
+                closeButton.style.color = '#f44336';
+            };
+            closeButton.onmouseout = () => {
+                closeButton.style.background = 'none';
+                closeButton.style.color = '#999';
+            };
+            closeButton.onclick = () => closeModal(modal);
+            
+            modalHeader.appendChild(titleElement);
+            modalHeader.appendChild(closeButton);
+            
+            const modalBody = document.createElement('div');
+            modalBody.className = 'modal-body';
+            modalBody.style.cssText = `
+                padding: 30px;
+                max-height: calc(90vh - 80px);
+                overflow-y: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            // Add loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading-indicator';
+            loadingDiv.innerHTML = '<p style="color: #666;">Loading file...</p>';
+            modalBody.appendChild(loadingDiv);
+            
+            modalContent.appendChild(modalHeader);
+            modalContent.appendChild(modalBody);
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // Load file content
+            loadFilePreview(fileId, filename, fileType, modalBody, loadingDiv);
+            
+            // Close on background click
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    closeModal(modal);
+                }
+            };
+            
+            // Close on Escape key
+            document.addEventListener('keydown', handleEscapeKey);
+        }
+        
+        function loadFilePreview(fileId, filename, fileType, modalBody, loadingDiv) {
+            // For images, show directly
+            if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg'].includes(fileType.toLowerCase())) {
+                fetch(`/team-files/download/${fileId}`)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        loadingDiv.remove();
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(blob);
+                        img.style.cssText = `
+                            max-width: 100%;
+                            max-height: 70vh;
+                            object-fit: contain;
+                            border-radius: 8px;
+                        `;
+                        modalBody.appendChild(img);
+                    })
+                    .catch(error => {
+                        showError(modalBody, 'Failed to load image');
+                    });
+            } 
+            // For PDFs, use embed/object
+            else if (fileType.toLowerCase() === 'pdf') {
+                loadingDiv.remove();
+                const embed = document.createElement('embed');
+                embed.src = `/team-files/download/${fileId}`;
+                embed.type = 'application/pdf';
+                embed.style.cssText = `
+                    width: 100%;
+                    height: 70vh;
+                    border: none;
+                    border-radius: 8px;
+                `;
+                modalBody.appendChild(embed);
+            }
+            // For Excel files (XLS, XLSX), parse and display as table
+            else if (['xls', 'xlsx'].includes(fileType.toLowerCase())) {
+                fetch(`/team-files/download/${fileId}`)
+                    .then(response => response.arrayBuffer())
+                    .then(data => {
+                        loadingDiv.remove();
+                        
+                        try {
+                            // Parse Excel file using SheetJS
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            
+                            // Get first sheet
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            
+                            // Convert to HTML table
+                            const htmlTable = XLSX.utils.sheet_to_html(worksheet, {
+                                id: 'excel-preview-table',
+                                editable: false
+                            });
+                            
+                            // Create container for table
+                            const tableContainer = document.createElement('div');
+                            tableContainer.style.cssText = `
+                                width: 100%;
+                                overflow-x: auto;
+                                border-radius: 8px;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                            `;
+                            
+                            // Style the table
+                            tableContainer.innerHTML = htmlTable;
+                            const table = tableContainer.querySelector('table');
+                            if (table) {
+                                table.style.cssText = `
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    background: white;
+                                    font-size: 14px;
+                                `;
+                                
+                                // Style headers
+                                const headers = table.querySelectorAll('th');
+                                headers.forEach(th => {
+                                    th.style.cssText = `
+                                        background: #36943b;
+                                        color: white;
+                                        padding: 12px 15px;
+                                        text-align: left;
+                                        font-weight: 600;
+                                        border: 1px solid #2d7a32;
+                                    `;
+                                });
+                                
+                                // Style cells
+                                const cells = table.querySelectorAll('td');
+                                cells.forEach(td => {
+                                    td.style.cssText = `
+                                        padding: 10px 15px;
+                                        border: 1px solid #e0e0e0;
+                                        vertical-align: top;
+                                    `;
+                                });
+                                
+                                // Add hover effect to rows
+                                const rows = table.querySelectorAll('tr:nth-child(even)');
+                                rows.forEach(row => {
+                                    row.style.background = '#f8faf8';
+                                });
+                            }
+                            
+                            // Add sheet info
+                            const sheetInfo = document.createElement('div');
+                            sheetInfo.style.cssText = `
+                                margin-bottom: 15px;
+                                padding: 10px;
+                                background: #e8f5e9;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                color: #36943b;
+                            `;
+                            sheetInfo.innerHTML = `
+                                <strong>📊 Excel File Preview</strong><br>
+                                Sheet: ${firstSheetName} | Total Sheets: ${workbook.SheetNames.length}
+                            `;
+                            
+                            modalBody.insertBefore(sheetInfo, modalBody.firstChild);
+                            modalBody.appendChild(tableContainer);
+                            
+                        } catch (error) {
+                            console.error('Error parsing Excel file:', error);
+                            showError(modalBody, 'Failed to parse Excel file. Please download to view.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching Excel file:', error);
+                        showError(modalBody, 'Failed to load Excel file');
+                    });
+            }
+            // For Word documents (DOC, DOCX), provide download
+            else if (['doc', 'docx'].includes(fileType.toLowerCase())) {
+                loadingDiv.remove();
+                const messageDiv = document.createElement('div');
+                messageDiv.style.cssText = `
+                    text-align: center;
+                    padding: 40px;
+                `;
+                messageDiv.innerHTML = `
+                    <div style="font-size: 64px; margin-bottom: 20px;"></div>
+                    <p style="font-size: 18px; color: #666; margin-bottom: 20px;">
+                        Word documents cannot be previewed directly in the browser.
+                    </p>
+                    <a href="/team-files/download/${fileId}" 
+                       style="display: inline-block; padding: 12px 30px; background: #36943b; color: white; 
+                              text-decoration: none; border-radius: 8px; font-weight: 600;"
+                       onclick="closeModal(document.querySelector('.file-view-modal'))">
+                        ⬇️ Download File
+                    </a>
+                `;
+                modalBody.appendChild(messageDiv);
+            }
+            // For PowerPoint files (PPT, PPTX), provide download
+            else if (['ppt', 'pptx'].includes(fileType.toLowerCase())) {
+                loadingDiv.remove();
+                const messageDiv = document.createElement('div');
+                messageDiv.style.cssText = `
+                    text-align: center;
+                    padding: 40px;
+                `;
+                messageDiv.innerHTML = `
+                    <div style="font-size: 64px; margin-bottom: 20px;"></div>
+                    <p style="font-size: 18px; color: #666; margin-bottom: 20px;">
+                        PowerPoint presentations cannot be previewed directly in the browser.
+                    </p>
+                    <a href="/team-files/download/${fileId}" 
+                       style="display: inline-block; padding: 12px 30px; background: #36943b; color: white; 
+                              text-decoration: none; border-radius: 8px; font-weight: 600;"
+                       onclick="closeModal(document.querySelector('.file-view-modal'))">
+                        ️ Download File
+                    </a>
+                `;
+                modalBody.appendChild(messageDiv);
+            }
+            // For text files, show content
+            else if (['txt', 'md', 'json', 'xml', 'csv'].includes(fileType.toLowerCase())) {
+                fetch(`/team-files/download/${fileId}`)
+                    .then(response => response.text())
+                    .then(text => {
+                        loadingDiv.remove();
+                        const pre = document.createElement('pre');
+                        pre.textContent = text;
+                        pre.style.cssText = `
+                            background: #f5f5f5;
+                            padding: 20px;
+                            border-radius: 8px;
+                            overflow-x: auto;
+                            max-width: 100%;
+                            font-family: 'Courier New', monospace;
+                            font-size: 14px;
+                            line-height: 1.6;
+                        `;
+                        modalBody.appendChild(pre);
+                    })
+                    .catch(error => {
+                        showError(modalBody, 'Failed to load text file');
+                    });
+            }
+            // For other files, provide download link
+            else {
+                loadingDiv.remove();
+                const messageDiv = document.createElement('div');
+                messageDiv.style.cssText = `
+                    text-align: center;
+                    padding: 40px;
+                `;
+                messageDiv.innerHTML = `
+                    <div style="font-size: 64px; margin-bottom: 20px;"></div>
+                    <p style="font-size: 18px; color: #666; margin-bottom: 20px;">
+                        This file type cannot be previewed directly.
+                    </p>
+                    <a href="/team-files/download/${fileId}" 
+                       style="display: inline-block; padding: 12px 30px; background: #36943b; color: white; 
+                              text-decoration: none; border-radius: 8px; font-weight: 600;"
+                       onclick="closeModal(document.querySelector('.file-view-modal'))">
+                        ⬇️ Download File
+                    </a>
+                `;
+                modalBody.appendChild(messageDiv);
+            }
+        }
+        
+        function showError(modalBody, message) {
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #f44336;">
+                    <div style="font-size: 48px; margin-bottom: 20px;"></div>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+        
+        function closeModal(modal) {
+            modal.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                modal.remove();
+                document.body.style.overflow = '';
+                document.removeEventListener('keydown', handleEscapeKey);
+            }, 300);
+        }
+        
+        function handleEscapeKey(e) {
+            if (e.key === 'Escape') {
+                const modal = document.querySelector('.file-view-modal');
+                if (modal) {
+                    closeModal(modal);
+                }
+            }
+        }
+        
+        // Add CSS animations
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+            @keyframes slideUp {
+                from { 
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to { 
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+    </script>
+</body>
+</html>

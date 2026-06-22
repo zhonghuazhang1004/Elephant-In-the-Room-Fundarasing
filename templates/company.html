@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Company Information</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
             margin: 0;
@@ -107,7 +106,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 60px 40px;
         }
 
         .header {
@@ -195,34 +194,6 @@
             background: #f8f9ff;
         }
 
-        .map-section {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .map-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        .map-title {
-            font-size: 24px;
-            color: #333;
-            font-weight: 600;
-        }
-
-        #map {
-            height: 600px;
-            border-radius: 10px;
-            border: 2px solid #e0e0e0;
-        }
-
         .message-box {
             background: #f8d7da;
             border-left: 4px solid #dc3545;
@@ -245,10 +216,11 @@
                 </div>
             </a>
             <ul class="navbar-menu">
-                <li class="navbar-item"><a href="/">Dashboard</a></li>
+                <li class="navbar-item"><a href="/">Home Page</a></li>
                 <li class="navbar-item active"><a href="/company">Company Info</a></li>
                 <li class="navbar-item"><a href="/school">School Info</a></li>
                 <li class="navbar-item"><a href="/match">Matching</a></li>
+                <li class="navbar-item"><a href="/reference">Reference</a></li>
                 <li class="navbar-item"><a href="/admin">Admin</a></li>
             </ul>
         </div>
@@ -277,93 +249,20 @@
             </div>
         </div>
 
-        {% if has_addresses %}
-        <div class="map-section">
-            <div class="map-header">
-                <div class="map-title">Company Locations Map</div>
+        {% if school_table %}
+        <div class="data-section">
+            <div class="data-header">
+                <div class="data-title">School Data</div>
+                <span style="font-size: 14px; color: #666;">Total Records: {{ school_total_rows }}</span>
             </div>
-            <div id="map"></div>
+            <div class="table-container">
+                {{ school_table | safe }}
+            </div>
         </div>
         {% endif %}
+
         {% endif %}
     </div>
-
-    {% if has_addresses %}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Initialize map after DOM is fully loaded
-        setTimeout(function () {
-            var mapElement = document.getElementById('map');
-
-            if (!mapElement || mapElement.offsetWidth === 0 || mapElement.offsetHeight === 0) {
-                console.error('Map container not ready or has no dimensions');
-                return;
-            }
-
-            var map = L.map('map', {
-                zoomControl: true,
-                scrollWheelZoom: true,
-                attributionControl: true
-            }).setView([53.3498, -6.2603], 7);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 19,
-                minZoom: 5
-            }).addTo(map);
-
-            // Force map to recalculate size
-            map.invalidateSize();
-
-            setTimeout(function () {
-                map.invalidateSize();
-            }, 100);
-
-            setTimeout(function () {
-                map.invalidateSize();
-            }, 500);
-
-            // Get location data from backend
-            var locations = {{ locations | tojson
-        }};
-        console.log('Locations data:', locations);
-
-        var markers = [];
-
-        if (locations && locations.length > 0) {
-            locations.forEach(function (loc, index) {
-                if (loc && loc.lat && loc.lon) {
-                    var marker = L.marker([loc.lat, loc.lon]).addTo(map);
-                    markers.push(marker);
-
-                    // Create popup content
-                    var popupContent = '<strong style="color: #667eea;">Company Location</strong><br>';
-                    popupContent += '<strong>Latitude:</strong> ' + loc.lat + '<br>';
-                    popupContent += '<strong>Longitude:</strong> ' + loc.lon;
-
-                    marker.bindPopup(popupContent);
-                }
-            });
-
-            // Fit map to show all markers
-            if (markers.length > 0) {
-                var group = L.featureGroup(markers);
-                map.fitBounds(group.getBounds().pad(0.1));
-
-                setTimeout(function () {
-                    map.invalidateSize();
-                }, 200);
-
-                setTimeout(function () {
-                    map.invalidateSize();
-                }, 600);
-            }
-        }
-
-        console.log('Map initialized successfully');
-        }, 500);
-    </script>
-    {% endif %}
 </body>
 
 </html>

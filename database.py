@@ -16,6 +16,40 @@ def get_db_connection():
     return conn
 
 
+def migrate_database():
+    """Migrate database to add new columns if they don't exist"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if donation_amount column exists in companies table
+        cursor.execute("PRAGMA table_info(companies)")
+        company_columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'donation_amount' not in company_columns:
+            print("Adding donation_amount column to companies table...")
+            cursor.execute('ALTER TABLE companies ADD COLUMN donation_amount REAL DEFAULT 0')
+            print("✓ Added donation_amount column")
+        
+        # Check if donation_received column exists in schools table
+        cursor.execute("PRAGMA table_info(schools)")
+        school_columns = [row[1] for row in cursor.fetchall()]
+        
+        if 'donation_received' not in school_columns:
+            print("Adding donation_received column to schools table...")
+            cursor.execute('ALTER TABLE schools ADD COLUMN donation_received REAL DEFAULT 0')
+            print("✓ Added donation_received column")
+        
+        conn.commit()
+        print("✓ Database migration completed successfully")
+        
+    except Exception as e:
+        print(f"Migration error: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+
 def init_db():
     """Initialize the database with required tables"""
     # Ensure data directory exists
@@ -40,6 +74,7 @@ def init_db():
             contact_name TEXT,
             contact_email TEXT,
             status TEXT DEFAULT 'pending',
+            donation_amount REAL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(eircode, company_name)
@@ -65,6 +100,7 @@ def init_db():
             school_level TEXT,
             enrolment INTEGER,
             status TEXT DEFAULT 'active',
+            donation_received REAL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -116,4 +152,5 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
+    migrate_database()
     print(f"Database created at: {DATABASE_PATH}")

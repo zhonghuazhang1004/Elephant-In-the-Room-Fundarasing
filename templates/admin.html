@@ -105,7 +105,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 60px 40px;
             display: flex;
             gap: 30px;
         }
@@ -508,11 +508,12 @@
                 </div>
             </a>
             <ul class="navbar-menu">
-                <li class="navbar-item"><a href="/">Dashboard</a></li>
+                <li class="navbar-item"><a href="/">Home Page</a></li>
                 <li class="navbar-item"><a href="/company">Company Info</a></li>
                 <li class="navbar-item"><a href="/school">School Info</a></li>
                 <li class="navbar-item"><a href="/match">Matching</a></li>
-                <li class="navbar-item active"><a href="/admin">Admin Panel</a></li>
+                <li class="navbar-item"><a href="/reference">Reference</a></li>
+                <li class="navbar-item active"><a href="/admin">Admin</a></li>
             </ul>
         </div>
     </nav>
@@ -529,27 +530,9 @@
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a href="/admin/companies" class="sidebar-link" id="nav-companies">
-                        <span class="sidebar-icon">🏢</span>
-                        <span>Companies</span>
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="/admin/schools" class="sidebar-link" id="nav-schools">
-                        <span class="sidebar-icon">🎓</span>
-                        <span>Schools</span>
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="/team-files" class="sidebar-link" id="nav-files">
+                    <a href="/admin/files" class="sidebar-link" id="nav-files">
                         <span class="sidebar-icon">📁</span>
                         <span>Team Files</span>
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="#" class="sidebar-link" onclick="confirmClear(); return false;">
-                        <span class="sidebar-icon">⚠️</span>
-                        <span>Clear Data</span>
                     </a>
                 </li>
             </ul>
@@ -592,7 +575,6 @@
                     </form>
                     <button onclick="openAddModal('company')" class="btn btn-primary">➕ Add Company</button>
                     <button onclick="openAddModal('school')" class="btn btn-primary">➕ Add School</button>
-                    <button onclick="confirmClear()" class="btn btn-danger">⚠️ Clear All Data</button>
                 </div>
             </div>
 
@@ -605,7 +587,9 @@
 
                 <!-- Companies Tab -->
                 <div id="companies-tab" class="tab-content active">
-                    <div class="section-title">Company Records</div>
+                    <div style="margin-bottom: 20px;">
+                        <div class="section-title" style="margin-bottom: 0;">Company Records</div>
+                    </div>
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
@@ -632,7 +616,6 @@
                                     <td>{{ company.status or 'pending' }}</td>
                                     <td>
                                         <button class="action-btn edit-btn" onclick='editCompany({{ company | tojson }})'>Edit</button>
-                                        <button class="action-btn delete-btn" onclick="deleteCompany({{ company.id }})">Delete</button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -643,7 +626,9 @@
 
                 <!-- Schools Tab -->
                 <div id="schools-tab" class="tab-content">
-                    <div class="section-title">School Records</div>
+                    <div style="margin-bottom: 20px;">
+                        <div class="section-title" style="margin-bottom: 0;">School Records</div>
+                    </div>
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
@@ -668,7 +653,6 @@
                                     <td>{{ school.status or 'active' }}</td>
                                     <td>
                                         <button class="action-btn edit-btn" onclick='editSchool({{ school | tojson }})'>Edit</button>
-                                        <button class="action-btn delete-btn" onclick="deleteSchool({{ school.id }})">Delete</button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -839,26 +823,6 @@
             document.getElementById('schoolContactInfo').value = school.contact_info || '';
             document.getElementById('schoolStatus').value = school.status || 'active';
             document.getElementById('schoolModal').style.display = 'block';
-        }
-
-        function deleteCompany(id) {
-            if (confirm('Are you sure you want to delete this company?')) {
-                window.location.href = '/admin/company/delete/' + id;
-            }
-        }
-
-        function deleteSchool(id) {
-            if (confirm('Are you sure you want to delete this school?')) {
-                window.location.href = '/admin/school/delete/' + id;
-            }
-        }
-
-        function confirmClear() {
-            if (confirm('⚠️ WARNING: This will delete ALL data. Are you sure?')) {
-                if (confirm('This action cannot be undone. Continue?')) {
-                    window.location.href = '/admin/clear';
-                }
-            }
         }
 
         // Handle sidebar navigation active state
