@@ -217,6 +217,7 @@ def convert_eircode_batch(eircodes, delay=0.2):
 def import_companies_from_excel(file_path):
     """
     Import company data from Excel file into SQLite database.
+    Direct mapping to Excel columns for consistency.
     
     Args:
         file_path: Path to the Excel file
@@ -235,6 +236,9 @@ def import_companies_from_excel(file_path):
         if df.empty:
             return 0
         
+        # Normalize column names (strip whitespace and convert to lowercase for matching)
+        df.columns = [str(col).strip() for col in df.columns]
+        
         conn = database.get_db_connection()
         cursor = conn.cursor()
         
@@ -242,19 +246,43 @@ def import_companies_from_excel(file_path):
         
         for index, row in df.iterrows():
             try:
-                # Extract data from row
-                company_name = str(row.get('Company Name', '')).strip()
-                eircode = str(row.get('Eircode', '')).strip() if pd.notna(row.get('Eircode')) else None
-                address = str(row.get('Address', '')).strip() if pd.notna(row.get('Address')) else None
-                preferred_school = str(row.get('Preferred School', '')).strip() if pd.notna(row.get('Preferred School')) else None
-                preferred_area = str(row.get('Preferred Area', '')).strip() if pd.notna(row.get('Preferred Area')) else None
-                contact_name = str(row.get('Contact name', '')).strip() if pd.notna(row.get('Contact name')) else None
-                contact_email = str(row.get('Contact Email', '')).strip() if pd.notna(row.get('Contact Email')) else None
-                status = str(row.get('Status', 'pending')).strip() if pd.notna(row.get('Status')) else 'pending'
-                donation_amount = float(row.get('Donation Amount', 0)) if pd.notna(row.get('Donation Amount')) else 0
+                def get_value(row, possible_names, default=''):
+                    for name in possible_names:
+                        if name in row.index:
+                            val = row[name]
+                            if pd.notna(val):
+                                return str(val).strip()
+                    return default
                 
-                if not company_name:
+                # Direct mapping from Excel columns to database fields
+                company_name = get_value(row, ['Company', 'Company Name', 'company', 'company_name'])
+                
+                if not company_name or company_name.lower() == 'nan':
                     continue
+                
+                county = get_value(row, ['County', 'county', 'COUNTY'])
+                description = get_value(row, ['Description', 'description', 'DESCRIPTION'])
+                address = get_value(row, ['Address', 'address', 'ADDRESS', 'Street Address'])
+                eircode = get_value(row, ['Eircode', 'eircode', 'EIRCODE', 'Postal Code', 'Postcode'])
+                website = get_value(row, ['Website', 'website', 'WEBSITE', 'URL'])
+                phone_number = get_value(row, ['Phone Number', 'phone number', 'Phone', 'phone', 'PHONE', 'Telephone'])
+                linkedin = get_value(row, ['LinkedIn', 'linkedin', 'LINKEDIN', 'Linkedin'])
+                additional_links = get_value(row, ['Additional Links', 'additional links', 'Links', 'links'])
+                notes = get_value(row, ['Notes', 'notes', 'NOTES', 'Comments'])
+                socials = get_value(row, ['Socials', 'socials', 'SOCIALS', 'Social Media'])
+                
+                # Legacy fields (may not be in new Excel format)
+                preferred_school = get_value(row, ['Preferred School', 'preferred_school', 'School Preference'])
+                preferred_area = get_value(row, ['Preferred Area', 'preferred_area', 'Area Preference'])
+                contact_name = get_value(row, ['Contact name', 'contact_name', 'Contact Name', 'Contact Person'])
+                contact_email = get_value(row, ['Contact Email', 'contact_email', 'Email', 'email', 'EMAIL'])
+                status = get_value(row, ['Status', 'status', 'STATUS'], 'pending')
+                
+                donation_raw = get_value(row, ['Donation Amount', 'donation_amount', 'Donation', 'Amount'])
+                try:
+                    donation_amount = float(donation_raw) if donation_raw else 0
+                except (ValueError, TypeError):
+                    donation_amount = 0
                 
                 # Get coordinates from Eircode using Nominatim
                 latitude = None
@@ -271,14 +299,24 @@ def import_companies_from_excel(file_path):
                             except Exception:
                                 pass
                 
-                # Insert or update record
+                # Insert or update record with all fields
                 cursor.execute('''
                     INSERT INTO companies 
-                    (company_name, eircode, address, latitude, longitude, 
+                    (company_name, county, description, address, eircode, website, phone_number,
+                     linkedin, additional_links, notes, socials, latitude, longitude,
                      preferred_school, preferred_area, contact_name, contact_email, status, donation_amount)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(eircode, company_name) DO UPDATE SET
+                        county = excluded.county,
+                        description = excluded.description,
                         address = excluded.address,
+                        eircode = excluded.eircode,
+                        website = excluded.website,
+                        phone_number = excluded.phone_number,
+                        linkedin = excluded.linkedin,
+                        additional_links = excluded.additional_links,
+                        notes = excluded.notes,
+                        socials = excluded.socials,
                         latitude = excluded.latitude,
                         longitude = excluded.longitude,
                         preferred_school = excluded.preferred_school,
@@ -288,7 +326,8 @@ def import_companies_from_excel(file_path):
                         status = excluded.status,
                         donation_amount = excluded.donation_amount,
                         updated_at = CURRENT_TIMESTAMP
-                ''', (company_name, eircode, address, latitude, longitude,
+                ''', (company_name, county, description, address, eircode, website, phone_number,
+                      linkedin, additional_links, notes, socials, latitude, longitude,
                       preferred_school, preferred_area, contact_name, contact_email, status, donation_amount))
                 
                 imported_count += 1
@@ -309,26 +348,31 @@ def import_companies_from_excel(file_path):
 
 
 def _read_school_df(file_path):
-    """Read school Excel sheets (Mainstream + Special) into one DataFrame."""
+    """Read school Excel sheets into DataFrame. Supports multiple formats."""
     frames = []
+    
     if file_path.endswith('.csv'):
         frames.append(pd.read_csv(file_path))
     else:
         engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
         xl = pd.ExcelFile(file_path, engine=engine)
+        
+        # Try to read all sheets
         for sheet in xl.sheet_names:
-            if sheet.lower() in ('mainstream schools', 'special schools'):
-                df = xl.parse(sheet, header=1)
-                if not df.empty:
+            try:
+                df = xl.parse(sheet)
+                if not df.empty and len(df.columns) > 0:
                     frames.append(df)
+            except Exception:
+                continue
+    
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
 def import_schools_from_excel(file_path):
     """
     Import school data from Excel file into SQLite database.
-    Uses School Latitude/Longitude from the file directly; falls back to
-    Nominatim geocoding via convert_eircode_to_address() when missing.
+    Direct mapping to Excel columns for consistency.
 
     Returns:
         Number of records imported
@@ -337,30 +381,92 @@ def import_schools_from_excel(file_path):
         df = _read_school_df(file_path)
         if df.empty:
             return 0
-
+        
+        # Normalize column names (strip whitespace and convert to lowercase for matching)
+        df.columns = [str(col).strip().lower() for col in df.columns]
+        
         conn = database.get_db_connection()
         cursor = conn.cursor()
         imported_count = 0
 
         for index, row in df.iterrows():
             try:
-                school_name = str(row.get('Official Name', '')).strip()
-                if not school_name or school_name == 'nan':
+                def get_value(row, possible_names, default=None):
+                    for name in possible_names:
+                        name_lower = name.lower()
+                        if name_lower in row.index:
+                            val = row[name_lower]
+                            if pd.notna(val):
+                                return str(val).strip()
+                    return default
+                
+                # Direct mapping from Excel columns to database fields
+                internal_id = get_value(row, ['id', 'internal id'])
+                roll_number = get_value(row, ['school_id', 'roll number', 'roll_number', 'school id'])
+                school_name = get_value(row, ['name', 'school_name', 'official name', 'school name', 'school'])
+                
+                if not school_name or school_name.lower() == 'nan':
                     continue
                 
-                # Try to extract other fields dynamically
-                address = str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else None
-                contact_info = str(row.iloc[2]).strip() if len(row) > 2 and pd.notna(row.iloc[2]) else None
-                email = str(row.iloc[3]).strip() if len(row) > 3 and pd.notna(row.iloc[3]) else None
-                phone = str(row.iloc[4]).strip() if len(row) > 4 and pd.notna(row.iloc[4]) else None
+                county = get_value(row, ['county', 'region', 'area'])
+                address = get_value(row, ['address', 'street address', 'location'])
+                eircode = get_value(row, ['eircode', 'postal code', 'postcode'])
+                school_type = get_value(row, ['school_type', 'school type', 'type'])
+                email = get_value(row, ['contact_email', 'email', 'contact email', 'e-mail'])
+                contact_name = get_value(row, ['contact_name', 'contact info', 'contact person'])
+                deis = get_value(row, ['deis', 'DEIS'], None)
+                school_level = get_value(row, ['school_level', 'school level', 'level'])
                 
-                # Insert or update record
-                cursor.execute('''
+                enrolment_raw = get_value(row, ['enrolment', 'enrollment', 'students', 'pupils'])
+                try:
+                    enrolment = int(float(enrolment_raw)) if enrolment_raw else None
+                except (ValueError, TypeError):
+                    enrolment = None
+                
+                # Get coordinates from Eircode using Nominatim
+                latitude = None
+                longitude = None
+                
+                if eircode:
+                    coords_str = convert_eircode_to_address(eircode)
+                    if coords_str and ',' in coords_str:
+                        parts = coords_str.split(',')
+                        if len(parts) == 2:
+                            try:
+                                latitude = float(parts[0].strip())
+                                longitude = float(parts[1].strip())
+                            except Exception:
+                                pass
+                
+                # Insert or update record with all fields
+                if roll_number:
+                    conflict_clause = 'ON CONFLICT(roll_number) DO UPDATE SET'
+                else:
+                    conflict_clause = 'ON CONFLICT(school_name) DO UPDATE SET'
+                
+                cursor.execute(f'''
                     INSERT INTO schools 
-                    (school_name, address, contact_info, email, phone)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT DO NOTHING
-                ''', (school_name, address, contact_info, email, phone))
+                    (internal_id, roll_number, school_name, county, address, eircode,
+                     school_type, email, contact_name, deis, school_level, enrolment,
+                     latitude, longitude, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    {conflict_clause}
+                        internal_id = excluded.internal_id,
+                        county = excluded.county,
+                        address = excluded.address,
+                        eircode = excluded.eircode,
+                        school_type = excluded.school_type,
+                        email = excluded.email,
+                        contact_name = excluded.contact_name,
+                        deis = excluded.deis,
+                        school_level = excluded.school_level,
+                        enrolment = excluded.enrolment,
+                        latitude = excluded.latitude,
+                        longitude = excluded.longitude,
+                        updated_at = CURRENT_TIMESTAMP
+                ''', (internal_id, roll_number, school_name, county, address, eircode,
+                      school_type, email, contact_name, deis, school_level, enrolment,
+                      latitude, longitude, 'active'))
                 
                 imported_count += 1
                 
@@ -383,15 +489,16 @@ def get_all_companies():
     Get all companies from database.
     
     Returns:
-        List of company dictionaries
+        List of company dictionaries with all fields matching Excel columns
     """
     conn = database.get_db_connection()
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT id, company_name, eircode, address, latitude, longitude,
-               preferred_school, preferred_area, contact_name, contact_email,
-               status, created_at
+        SELECT id, company_name, county, description, address, eircode, website,
+               phone_number, linkedin, additional_links, notes, socials,
+               latitude, longitude, preferred_school, preferred_area, 
+               contact_name, contact_email, status, donation_amount, created_at
         FROM companies
         ORDER BY created_at DESC
     ''')
@@ -403,14 +510,13 @@ def get_all_companies():
 
 
 def get_all_schools():
-    """Get all schools from database."""
+    """Get all schools from database with all fields matching Excel columns."""
     conn = database.get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT id, roll_number, school_name, eircode, address, county,
-               latitude, longitude, contact_info, email, phone,
-               deis, school_type, school_level, enrolment,
-               status, created_at
+        SELECT id, internal_id, roll_number, school_name, county, address, eircode,
+               school_type, email, contact_name, deis, school_level, enrolment,
+               latitude, longitude, status, donation_received, created_at
         FROM schools
         ORDER BY school_name ASC
     ''')
@@ -633,55 +739,37 @@ def eircode_viewer():
 
 @app.route('/company')
 def company_information():
-    """Company Information page with map visualization - merged with schools"""
+    """Company Information page with map visualization"""
     try:
-        # Get all Excel/CSV files from the data folder
-        excel_files = glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.xlsx'))
-        excel_files += glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.xls'))
-        csv_files = glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.csv'))
-        
-        all_files = excel_files + csv_files
-        
-        # Import data from Excel files into database
-        imported_companies = 0
-        imported_schools = 0
-        
-        if all_files:
-            for file_path in all_files:
-                filename = os.path.basename(file_path).lower()
-                if 'school' in filename:
-                    count = import_schools_from_excel(file_path)
-                    imported_schools += count
-                else:
-                    count = import_companies_from_excel(file_path)
-                    imported_companies += count
-            
-            print(f"Import summary: {imported_companies} companies, {imported_schools} schools")
-        
-        # Get data from database
+        # Get data from database (no auto-import, use Admin page for imports)
         companies = get_all_companies()
-        schools = get_all_schools()
         company_locations = get_company_locations()
         
         # Convert company data to DataFrame for HTML table
         company_df = None
         company_location_data = []
-        school_location_data = []
         company_total_rows = len(companies)
-        school_total_rows = len(schools)
         
         if companies:
             # Create DataFrame from database records
             company_df = pd.DataFrame(companies)
             
-            # Rename columns to match display requirements
+            # Rename columns to match Excel display requirements
             column_mapping = {
-                'company_name': 'Company Name',
-                'eircode': 'Eircode',
+                'company_name': 'Company',
+                'county': 'County',
+                'description': 'Description',
                 'address': 'Address',
+                'eircode': 'Eircode',
+                'website': 'Website',
+                'phone_number': 'Phone Number',
+                'linkedin': 'LinkedIn',
+                'additional_links': 'Additional Links',
+                'notes': 'Notes',
+                'socials': 'Socials',
                 'preferred_school': 'Preferred School',
                 'preferred_area': 'Preferred Area',
-                'contact_name': 'Contact name',
+                'contact_name': 'Contact Name',
                 'contact_email': 'Contact Email',
                 'status': 'Status',
                 'created_at': 'Created at'
@@ -689,16 +777,24 @@ def company_information():
             
             company_df = company_df.rename(columns=column_mapping)
             
-            # Select only desired columns
+            # Select all available columns in order matching Excel
             desired_columns = [
-                'Company Name', 
-                'Eircode', 
+                'Company', 
+                'County',
+                'Description',
                 'Address',
-                'Preferred School', 
-                'Preferred Area', 
-                'Contact name', 
-                'Contact Email', 
-                'Status', 
+                'Eircode',
+                'Website',
+                'Phone Number',
+                'LinkedIn',
+                'Additional Links',
+                'Notes',
+                'Socials',
+                'Preferred School',
+                'Preferred Area',
+                'Contact Name',
+                'Contact Email',
+                'Status',
                 'Created at'
             ]
             
@@ -718,36 +814,14 @@ def company_information():
                 else:
                     company_location_data.append(None)
         
-        # Extract school location data
-        if schools:
-            for school in schools:
-                if school.get('latitude') and school.get('longitude'):
-                    school_location_data.append({
-                        'lat': school['latitude'],
-                        'lon': school['longitude'],
-                        'name': school.get('school_name', ''),
-                        'type': 'school'
-                    })
-        
         # Convert to HTML
         company_html = company_df.to_html(classes='data-table', index=False, escape=False) if company_df is not None else ''
         
-        # Also prepare school table
-        school_df = None
-        school_html = ''
-        if schools:
-            school_df = pd.DataFrame(schools)
-            school_df = school_df.fillna('')
-            school_html = school_df.to_html(classes='data-table', index=False, escape=False)
-        
         return render_template('company.html', 
                              company_table=company_html,
-                             school_table=school_html,
                              company_total_rows=company_total_rows,
-                             school_total_rows=school_total_rows,
                              has_addresses=len(company_location_data) > 0,
-                             company_locations=company_location_data,
-                             school_locations=school_location_data)
+                             company_locations=company_location_data)
     
     except Exception as e:
         return render_template('company.html', 
@@ -758,34 +832,52 @@ def company_information():
 def school_information():
     """School Information page"""
     try:
-        # Get all Excel/CSV files from the data folder (for import)
-        excel_files = glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.xlsx'))
-        excel_files += glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.xls'))
-        csv_files = glob.glob(os.path.join(app.config['DATA_FOLDER'], '*.csv'))
-        
-        all_files = excel_files + csv_files
-        
-        # Import school data if files exist
-        if all_files:
-            for file_path in all_files:
-                filename = os.path.basename(file_path).lower()
-                if 'school' in filename:
-                    import_schools_from_excel(file_path)
-        
-        # Get data from database
+        # Get data from database (no auto-import, use Admin page for imports)
         schools = get_all_schools()
         school_locations = get_school_locations()
 
         if not schools:
             return render_template('school.html',
-                                   message='No school data found. Please add school Excel or CSV files to the "data" folder.')
+                                   message='No school data found. Please upload school data via Admin page.')
 
-        # Build table (drop internal cols like lat/lon/id)
+        # Build table matching Excel columns
         school_df = pd.DataFrame(schools)
-        display_cols = ['roll_number', 'school_name', 'eircode', 'address', 'county',
-                        'email', 'phone', 'contact_info', 'status']
+        
+        # Remove the database primary key 'id' column - we don't want to show it
+        if 'id' in school_df.columns:
+            school_df = school_df.drop(columns=['id'])
+        
+        # Rename columns to match Excel display requirements
+        column_mapping = {
+            'internal_id': 'id',
+            'roll_number': 'school_id',
+            'school_name': 'name',
+            'county': 'county',
+            'address': 'address',
+            'eircode': 'eircode',
+            'school_type': 'school_type',
+            'email': 'contact_email',
+            'contact_name': 'contact_name'
+        }
+        
+        school_df = school_df.rename(columns=column_mapping)
+        
+        # Select all available columns in order matching Excel
+        display_cols = ['id', 'school_id', 'name', 'county', 'address', 
+                        'eircode', 'school_type', 'contact_email', 'contact_name']
         existing_cols = [c for c in display_cols if c in school_df.columns]
         school_df = school_df[existing_cols].fillna('')
+        
+        # Sort by id column in ascending order (smallest to largest)
+        if 'id' in school_df.columns:
+            try:
+                school_df['id'] = pd.to_numeric(school_df['id'], errors='coerce')
+                school_df = school_df.sort_values(by='id', ascending=True)
+                # Convert back to string for display
+                school_df['id'] = school_df['id'].apply(lambda x: str(int(x)) if pd.notna(x) and x == x else '')
+            except Exception as e:
+                print(f"Warning: Could not sort by id: {e}")
+
         html_table = school_df.to_html(classes='data-table', index=False, escape=False)
 
         location_data = [
@@ -843,6 +935,58 @@ def admin_import():
     
     # GET request - show admin page with stats
     return render_template('admin.html', **get_admin_stats())
+
+
+@app.route('/admin/upload', methods=['POST'])
+def upload_data_file():
+    """Upload and import Company or School Excel/CSV file"""
+    try:
+        if 'file' not in request.files:
+            return render_template('admin.html',
+                                 message='✗ No file selected',
+                                 success=False,
+                                 **get_admin_stats())
+        
+        file = request.files['file']
+        file_type = request.form.get('file_type')  # 'company' or 'school'
+        
+        if file.filename == '':
+            return render_template('admin.html',
+                                 message='✗ No file selected',
+                                 success=False,
+                                 **get_admin_stats())
+        
+        # Check file extension
+        if not file.filename.lower().endswith(('.xlsx', '.xls', '.csv')):
+            return render_template('admin.html',
+                                 message='✗ Invalid file type. Please upload .xlsx, .xls, or .csv file',
+                                 success=False,
+                                 **get_admin_stats())
+        
+        # Save file to data folder
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['DATA_FOLDER'], filename)
+        file.save(file_path)
+        
+        # Import the file
+        imported_count = 0
+        if file_type == 'school':
+            imported_count = import_schools_from_excel(file_path)
+            message = f'✓ Successfully imported {imported_count} school records from {filename}'
+        else:
+            imported_count = import_companies_from_excel(file_path)
+            message = f'✓ Successfully imported {imported_count} company records from {filename}'
+        
+        return render_template('admin.html',
+                             message=message,
+                             success=True,
+                             **get_admin_stats())
+    
+    except Exception as e:
+        return render_template('admin.html',
+                             message=f'✗ Upload failed: {str(e)}',
+                             success=False,
+                             **get_admin_stats())
 
 
 def get_admin_stats():
@@ -1275,6 +1419,7 @@ def delete_file(file_id):
         conn.close()
         
         return redirect(url_for('admin_dashboard', message='✓ File deleted successfully!'))
+
     
     except Exception as e:
         return redirect(url_for('admin_dashboard', error=f'Error deleting file: {str(e)}'))

@@ -566,15 +566,9 @@
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a href="/admin/files" class="sidebar-link" id="nav-files">
+                    <a href="/admin/files" class="sidebar-link">
                         <span class="sidebar-icon">📁</span>
                         <span>Team Files</span>
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="#" class="sidebar-link" onclick="confirmClear(); return false;">
-                        <span class="sidebar-icon">⚠️</span>
-                        <span>Clear Data</span>
                     </a>
                 </li>
             </ul>
@@ -617,7 +611,52 @@
                     </form>
                     <button onclick="openAddModal('company')" class="btn btn-primary">➕ Add Company</button>
                     <button onclick="openAddModal('school')" class="btn btn-primary">➕ Add School</button>
-                    <button onclick="confirmClear()" class="btn btn-danger">⚠️ Clear All Data</button>
+                </div>
+            </div>
+
+            <!-- File Upload Section -->
+            <div class="data-section">
+                <div class="section-title">Upload Data Files</div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Upload Company or School Excel/CSV files to import data into the database.
+                </p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Company File Upload -->
+                    <div style="background: #f8faf8; padding: 20px; border-radius: 8px; border: 2px dashed #36943b;">
+                        <h3 style="margin-bottom: 15px; color: #36943b;">📊 Upload Company Data</h3>
+                        <form method="POST" action="/admin/upload" enctype="multipart/form-data">
+                            <input type="hidden" name="file_type" value="company">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Select File:</label>
+                                <input type="file" name="file" accept=".xlsx,.xls,.csv" required 
+                                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">⬆️ Upload & Import Companies</button>
+                        </form>
+                        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                            Supported formats: .xlsx, .xls, .csv<br>
+                            File will be saved to data/ folder and imported automatically.
+                        </p>
+                    </div>
+
+                    <!-- School File Upload -->
+                    <div style="background: #fff8f8; padding: 20px; border-radius: 8px; border: 2px dashed #e53935;">
+                        <h3 style="margin-bottom: 15px; color: #e53935;">🎓 Upload School Data</h3>
+                        <form method="POST" action="/admin/upload" enctype="multipart/form-data">
+                            <input type="hidden" name="file_type" value="school">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Select File:</label>
+                                <input type="file" name="file" accept=".xlsx,.xls,.csv" required 
+                                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <button type="submit" class="btn btn-danger" style="width: 100%;">⬆️ Upload & Import Schools</button>
+                        </form>
+                        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                            Supported formats: .xlsx, .xls, .csv<br>
+                            File will be saved to data/ folder and imported automatically.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -930,14 +969,6 @@
         function deleteSchool(id) {
             if (confirm('Are you sure you want to delete this school?')) {
                 window.location.href = '/admin/school/delete/' + id;
-            }
-        }
-
-        function confirmClear() {
-            if (confirm('⚠️ WARNING: This will delete ALL data. Are you sure?')) {
-                if (confirm('This action cannot be undone. Continue?')) {
-                    window.location.href = '/admin/clear';
-                }
             }
         }
 

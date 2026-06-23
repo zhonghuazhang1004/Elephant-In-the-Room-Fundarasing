@@ -60,13 +60,21 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create companies table
+    # Create companies table - matching Excel columns exactly
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_name TEXT NOT NULL,
-            eircode TEXT,
+            county TEXT,
+            description TEXT,
             address TEXT,
+            eircode TEXT,
+            website TEXT,
+            phone_number TEXT,
+            linkedin TEXT,
+            additional_links TEXT,
+            notes TEXT,
+            socials TEXT,
             latitude REAL,
             longitude REAL,
             preferred_school TEXT,
@@ -81,22 +89,22 @@ def init_db():
         )
     ''')
     
-    # Create schools table
+    # Create schools table - matching Excel columns exactly
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS schools (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            internal_id TEXT,
             roll_number TEXT UNIQUE,
             school_name TEXT NOT NULL,
-            eircode TEXT,
-            address TEXT,
             county TEXT,
+            address TEXT,
+            eircode TEXT,
+            school_type TEXT,
+            email TEXT,
+            contact_name TEXT,
             latitude REAL,
             longitude REAL,
-            contact_info TEXT,
-            email TEXT,
-            phone TEXT,
             deis TEXT,
-            school_type TEXT,
             school_level TEXT,
             enrolment INTEGER,
             status TEXT DEFAULT 'active',
@@ -108,13 +116,27 @@ def init_db():
 
     # Migrate existing tables that may be missing new columns
     for col, definition in [
-        ('roll_number', 'TEXT'),
-        ('eircode', 'TEXT'),
         ('county', 'TEXT'),
-        ('latitude', 'REAL'),
-        ('longitude', 'REAL'),
+        ('description', 'TEXT'),
+        ('website', 'TEXT'),
+        ('phone_number', 'TEXT'),
+        ('linkedin', 'TEXT'),
+        ('additional_links', 'TEXT'),
+        ('notes', 'TEXT'),
+        ('socials', 'TEXT'),
+    ]:
+        try:
+            cursor.execute(f'ALTER TABLE companies ADD COLUMN {col} {definition}')
+        except Exception:
+            pass  # column already exists
+    
+    for col, definition in [
+        ('internal_id', 'TEXT'),
+        ('roll_number', 'TEXT'),
+        ('county', 'TEXT'),
+        ('email', 'TEXT'),
+        ('contact_name', 'TEXT'),
         ('deis', 'TEXT'),
-        ('school_type', 'TEXT'),
         ('school_level', 'TEXT'),
         ('enrolment', 'INTEGER'),
     ]:
