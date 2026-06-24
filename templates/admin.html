@@ -571,6 +571,12 @@
                         <span>Team Files</span>
                     </a>
                 </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="confirmClear(); return false;">
+                        <span class="sidebar-icon">⚠️</span>
+                        <span>Clear Data</span>
+                    </a>
+                </li>
             </ul>
         </aside>
 
@@ -611,6 +617,7 @@
                     </form>
                     <button onclick="openAddModal('company')" class="btn btn-primary">➕ Add Company</button>
                     <button onclick="openAddModal('school')" class="btn btn-primary">➕ Add School</button>
+                    <button onclick="confirmClear()" class="btn btn-danger">⚠️ Clear All Data</button>
                 </div>
             </div>
 
@@ -969,6 +976,14 @@
         function deleteSchool(id) {
             if (confirm('Are you sure you want to delete this school?')) {
                 window.location.href = '/admin/school/delete/' + id;
+            }
+        }
+
+        function confirmClear() {
+            if (confirm('️ WARNING: This will delete ALL data. Are you sure?')) {
+                if (confirm('This action cannot be undone. Continue?')) {
+                    window.location.href = '/admin/clear';
+                }
             }
         }
 
