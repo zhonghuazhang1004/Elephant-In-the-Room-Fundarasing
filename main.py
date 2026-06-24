@@ -440,33 +440,48 @@ def import_schools_from_excel(file_path):
                 
                 # Insert or update record with all fields
                 if roll_number:
+                    # Use roll_number as unique key
                     conflict_clause = 'ON CONFLICT(roll_number) DO UPDATE SET'
+                    cursor.execute(f'''
+                        INSERT INTO schools 
+                        (internal_id, roll_number, school_name, county, address, eircode,
+                         school_type, email, contact_name, deis, school_level, enrolment,
+                         latitude, longitude, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        {conflict_clause}
+                            internal_id = excluded.internal_id,
+                            county = excluded.county,
+                            address = excluded.address,
+                            eircode = excluded.eircode,
+                            school_type = excluded.school_type,
+                            email = excluded.email,
+                            contact_name = excluded.contact_name,
+                            deis = excluded.deis,
+                            school_level = excluded.school_level,
+                            enrolment = excluded.enrolment,
+                            latitude = excluded.latitude,
+                            longitude = excluded.longitude,
+                            updated_at = CURRENT_TIMESTAMP
+                    ''', (internal_id, roll_number, school_name, county, address, eircode,
+                          school_type, email, contact_name, deis, school_level, enrolment,
+                          latitude, longitude, 'active'))
                 else:
-                    conflict_clause = 'ON CONFLICT(school_name) DO UPDATE SET'
-                
-                cursor.execute(f'''
-                    INSERT INTO schools 
-                    (internal_id, roll_number, school_name, county, address, eircode,
-                     school_type, email, contact_name, deis, school_level, enrolment,
-                     latitude, longitude, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    {conflict_clause}
-                        internal_id = excluded.internal_id,
-                        county = excluded.county,
-                        address = excluded.address,
-                        eircode = excluded.eircode,
-                        school_type = excluded.school_type,
-                        email = excluded.email,
-                        contact_name = excluded.contact_name,
-                        deis = excluded.deis,
-                        school_level = excluded.school_level,
-                        enrolment = excluded.enrolment,
-                        latitude = excluded.latitude,
-                        longitude = excluded.longitude,
-                        updated_at = CURRENT_TIMESTAMP
-                ''', (internal_id, roll_number, school_name, county, address, eircode,
-                      school_type, email, contact_name, deis, school_level, enrolment,
-                      latitude, longitude, 'active'))
+                    # No roll_number - check if school_name already exists
+                    cursor.execute('SELECT COUNT(*) FROM schools WHERE school_name = ?', (school_name,))
+                    exists = cursor.fetchone()[0]
+                    
+                    if exists == 0:
+                        # Insert new record without conflict clause
+                        cursor.execute('''
+                            INSERT INTO schools 
+                            (internal_id, roll_number, school_name, county, address, eircode,
+                             school_type, email, contact_name, deis, school_level, enrolment,
+                             latitude, longitude, status)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (internal_id, roll_number, school_name, county, address, eircode,
+                              school_type, email, contact_name, deis, school_level, enrolment,
+                              latitude, longitude, 'active'))
+                    # else: skip duplicate school_name
                 
                 imported_count += 1
                 
@@ -754,8 +769,15 @@ def company_information():
             # Create DataFrame from database records
             company_df = pd.DataFrame(companies)
             
+            # Add sequence number column (starting from 1)
+            company_df['id'] = range(1, len(company_df) + 1)
+            
+            # Sort by id in ascending order
+            company_df = company_df.sort_values(by='id', ascending=True)
+            
             # Rename columns to match Excel display requirements
             column_mapping = {
+                'id': 'ID',
                 'company_name': 'Company',
                 'county': 'County',
                 'description': 'Description',
@@ -779,6 +801,7 @@ def company_information():
             
             # Select all available columns in order matching Excel
             desired_columns = [
+                'ID',
                 'Company', 
                 'County',
                 'Description',
@@ -873,8 +896,9 @@ def school_information():
             try:
                 school_df['id'] = pd.to_numeric(school_df['id'], errors='coerce')
                 school_df = school_df.sort_values(by='id', ascending=True)
-                # Convert back to string for display
-                school_df['id'] = school_df['id'].apply(lambda x: str(int(x)) if pd.notna(x) and x == x else '')
+                
+                # Replace original IDs with sequential numbers (1, 2, 3, ...)
+                school_df['id'] = range(1, len(school_df) + 1)
             except Exception as e:
                 print(f"Warning: Could not sort by id: {e}")
 
