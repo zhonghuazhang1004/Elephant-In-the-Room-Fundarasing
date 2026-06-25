@@ -546,7 +546,7 @@ def get_school_locations():
     cursor = conn.cursor()
     cursor.execute('''
         SELECT id, school_name, eircode, address, county,
-               latitude, longitude, email, phone
+               latitude, longitude, email
         FROM schools
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         ORDER BY school_name ASC
