@@ -756,9 +756,22 @@ def eircode_viewer():
 def company_information():
     """Company Information page with map visualization"""
     try:
+        # Get search query from URL parameters
+        search_query = request.args.get('q', '').strip()
+        
         # Get data from database (no auto-import, use Admin page for imports)
         companies = get_all_companies()
         company_locations = get_company_locations()
+        
+        # Apply search filter if query is provided
+        if search_query:
+            filtered_companies = []
+            for company in companies:
+                # Search in company name, address, eircode, county, description
+                searchable_text = f"{company.get('company_name', '')} {company.get('address', '')} {company.get('eircode', '')} {company.get('county', '')} {company.get('description', '')}".lower()
+                if search_query.lower() in searchable_text:
+                    filtered_companies.append(company)
+            companies = filtered_companies
         
         # Convert company data to DataFrame for HTML table
         company_df = None
@@ -855,6 +868,9 @@ def company_information():
 def school_information():
     """School Information page"""
     try:
+        # Get search query from URL parameters
+        search_query = request.args.get('q', '').strip()
+        
         # Get data from database (no auto-import, use Admin page for imports)
         schools = get_all_schools()
         school_locations = get_school_locations()
@@ -862,6 +878,16 @@ def school_information():
         if not schools:
             return render_template('school.html',
                                    message='No school data found. Please upload school data via Admin page.')
+
+        # Apply search filter if query is provided
+        if search_query:
+            filtered_schools = []
+            for school in schools:
+                # Search in school name, address, eircode, county, roll_number
+                searchable_text = f"{school.get('school_name', '')} {school.get('address', '')} {school.get('eircode', '')} {school.get('county', '')} {school.get('roll_number', '')}".lower()
+                if search_query.lower() in searchable_text:
+                    filtered_schools.append(school)
+            schools = filtered_schools
 
         # Build table matching Excel columns
         school_df = pd.DataFrame(schools)
