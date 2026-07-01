@@ -101,7 +101,9 @@ def init_db():
             eircode TEXT,
             school_type TEXT,
             email TEXT,
+            phone TEXT,
             contact_name TEXT,
+            contact_info TEXT,
             latitude REAL,
             longitude REAL,
             deis TEXT,
@@ -135,7 +137,9 @@ def init_db():
         ('roll_number', 'TEXT'),
         ('county', 'TEXT'),
         ('email', 'TEXT'),
+        ('phone', 'TEXT'),
         ('contact_name', 'TEXT'),
+        ('contact_info', 'TEXT'),
         ('deis', 'TEXT'),
         ('school_level', 'TEXT'),
         ('enrolment', 'INTEGER'),
@@ -165,6 +169,14 @@ def init_db():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_company_name ON companies(company_name)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_school_name ON schools(school_name)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_team_member ON team_files(member_name)')
+    # roll_number was added via ALTER TABLE on existing databases (see above), so it
+    # lacks the UNIQUE constraint declared in the CREATE TABLE statement above. A unique
+    # index is required for the school import's ON CONFLICT(roll_number) upsert to work.
+    # Must NOT be a partial (WHERE-qualified) index: SQLite requires ON CONFLICT's target
+    # to repeat a partial index's WHERE clause verbatim, which main.py's INSERT doesn't do.
+    # A plain unique index works fine since SQLite allows unlimited NULLs in it, and the
+    # import code only ever passes a non-empty roll_number or None (never '').
+    cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_school_roll_number ON schools(roll_number)')
     
     conn.commit()
     conn.close()

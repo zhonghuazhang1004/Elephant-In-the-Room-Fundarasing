@@ -4,11 +4,13 @@ import os
 import glob
 import math
 import json
+import logging
 import threading
 import requests
 import time
 import config
 import database  # Import database module
+import gov_schools
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -22,6 +24,20 @@ ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt',
 # Create necessary folders
 os.makedirs(app.config['DATA_FOLDER'], exist_ok=True)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# --- Logging setup ---
+# Logs go to data/app.log (gitignored, same as other *.log files) as well as
+# stdout, so import/geocoding/matching failures can be diagnosed after the
+# fact instead of only appearing in an ephemeral console.
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(app.config['DATA_FOLDER'], 'app.log'), encoding='utf-8'),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger('elephant')
 
 # Initialize database
 database.init_db()
@@ -153,8 +169,9 @@ def geocode_location(eircode=None, address=None):
             lat, lon = _ireland_coords(results)
             if lat is not None:
                 return lat, lon
+            logger.warning(f"Geocode: Nominatim address search found no result inside Ireland for address='{address}'")
         except Exception as e:
-            print(f"Nominatim address error for {address}: {e}")
+            logger.error(f"Geocode: Nominatim address search error for address='{address}': {e}")
 
     eircode_str = str(eircode).strip().upper() if eircode else ''
     if eircode_str:
@@ -167,9 +184,11 @@ def geocode_location(eircode=None, address=None):
             lat, lon = _ireland_coords(results)
             if lat is not None:
                 return lat, lon
+            logger.warning(f"Geocode: Nominatim postalcode search found no result inside Ireland for eircode='{eircode_formatted}'")
         except Exception as e:
-            print(f"Nominatim postalcode error for {eircode}: {e}")
+            logger.error(f"Geocode: Nominatim postalcode search error for eircode='{eircode}': {e}")
 
+    logger.warning(f"Geocode: could not find coordinates for address='{address}', eircode='{eircode}'")
     raise ValueError(f"Could not find coordinates for address='{address}', eircode='{eircode}'")
 
 
@@ -197,21 +216,31 @@ def convert_eircode_batch(eircodes, delay=0.2):
     """
     addresses = []
     total = len(eircodes)
-    
-    print(f"Starting conversion of {total} Eircodes...")
-    
+
+    logger.info(f"Starting conversion of {total} Eircodes...")
+
     for i, eircode in enumerate(eircodes, 1):
         if i % 10 == 0 or i == total:
-            print(f"Progress: {i}/{total} ({i*100//total}%)")
-        
+            logger.info(f"Progress: {i}/{total} ({i*100//total}%)")
+
         address = convert_eircode_to_address(eircode)
         addresses.append(address)
-        
+
         # Add small delay to be respectful to the API
         time.sleep(delay)
-    
-    print(f"Conversion complete! Processed {total} Eircodes.")
+
+    logger.info(f"Conversion complete! Processed {total} Eircodes.")
     return addresses
+
+
+def _read_csv_robust(file_path, **kwargs):
+    """Read a CSV trying UTF-8 first, falling back to cp1252 for files
+    exported from Excel/Windows that contain bytes like non-breaking spaces
+    that aren't valid UTF-8."""
+    try:
+        return pd.read_csv(file_path, encoding='utf-8', **kwargs)
+    except UnicodeDecodeError:
+        return pd.read_csv(file_path, encoding='cp1252', **kwargs)
 
 
 def import_companies_from_excel(file_path):
@@ -228,7 +257,7 @@ def import_companies_from_excel(file_path):
     try:
         # Read Excel file
         if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
+            df = _read_csv_robust(file_path)
         else:
             engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
             df = pd.read_excel(file_path, engine=engine)
@@ -241,9 +270,11 @@ def import_companies_from_excel(file_path):
         
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        
+
         imported_count = 0
-        
+        geocode_failed = 0
+        no_location_data = 0
+
         for index, row in df.iterrows():
             try:
                 def get_value(row, possible_names, default=''):
@@ -253,13 +284,13 @@ def import_companies_from_excel(file_path):
                             if pd.notna(val):
                                 return str(val).strip()
                     return default
-                
+
                 # Direct mapping from Excel columns to database fields
                 company_name = get_value(row, ['Company', 'Company Name', 'company', 'company_name'])
-                
+
                 if not company_name or company_name.lower() == 'nan':
                     continue
-                
+
                 county = get_value(row, ['County', 'county', 'COUNTY'])
                 description = get_value(row, ['Description', 'description', 'DESCRIPTION'])
                 address = get_value(row, ['Address', 'address', 'ADDRESS', 'Street Address'])
@@ -270,102 +301,158 @@ def import_companies_from_excel(file_path):
                 additional_links = get_value(row, ['Additional Links', 'additional links', 'Links', 'links'])
                 notes = get_value(row, ['Notes', 'notes', 'NOTES', 'Comments'])
                 socials = get_value(row, ['Socials', 'socials', 'SOCIALS', 'Social Media'])
-                
+
                 # Legacy fields (may not be in new Excel format)
                 preferred_school = get_value(row, ['Preferred School', 'preferred_school', 'School Preference'])
                 preferred_area = get_value(row, ['Preferred Area', 'preferred_area', 'Area Preference'])
                 contact_name = get_value(row, ['Contact name', 'contact_name', 'Contact Name', 'Contact Person'])
                 contact_email = get_value(row, ['Contact Email', 'contact_email', 'Email', 'email', 'EMAIL'])
                 status = get_value(row, ['Status', 'status', 'STATUS'], 'pending')
-                
+
                 donation_raw = get_value(row, ['Donation Amount', 'donation_amount', 'Donation', 'Amount'])
                 try:
                     donation_amount = float(donation_raw) if donation_raw else 0
                 except (ValueError, TypeError):
+                    logger.warning(f"Company import row {index} ('{company_name}'): invalid donation amount '{donation_raw}', defaulting to 0")
                     donation_amount = 0
-                
-                # Get coordinates from Eircode using Nominatim
+
+                # Resolve coordinates: try address first, then Eircode.
                 latitude = None
                 longitude = None
 
-                if eircode:
-                    coords_str = convert_eircode_to_address(eircode)
-                    if coords_str and ',' in coords_str:
-                        parts = coords_str.split(',')
-                        if len(parts) == 2:
-                            try:
-                                latitude = float(parts[0].strip())
-                                longitude = float(parts[1].strip())
-                            except Exception:
-                                pass
-                
-                # Insert or update record with all fields
+                if eircode or address:
+                    try:
+                        latitude, longitude = geocode_location(eircode=eircode, address=address)
+                    except ValueError as e:
+                        geocode_failed += 1
+                        logger.warning(f"Company import row {index} ('{company_name}'): {e}")
+                else:
+                    no_location_data += 1
+                    logger.warning(f"Company import row {index} ('{company_name}'): no address or Eircode provided, cannot geocode - this company will not appear on the map or in distance-based matches")
+
+                # Insert or update record with all fields. COALESCE keeps the
+                # previous value when the incoming one is blank, so a partial
+                # re-import (e.g. a row missing an Eircode this time) can't
+                # wipe out coordinates/details that were already resolved.
                 cursor.execute('''
-                    INSERT INTO companies 
+                    INSERT INTO companies
                     (company_name, county, description, address, eircode, website, phone_number,
                      linkedin, additional_links, notes, socials, latitude, longitude,
                      preferred_school, preferred_area, contact_name, contact_email, status, donation_amount)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(eircode, company_name) DO UPDATE SET
-                        county = excluded.county,
-                        description = excluded.description,
-                        address = excluded.address,
+                        county = COALESCE(NULLIF(excluded.county, ''), companies.county),
+                        description = COALESCE(NULLIF(excluded.description, ''), companies.description),
+                        address = COALESCE(NULLIF(excluded.address, ''), companies.address),
                         eircode = excluded.eircode,
-                        website = excluded.website,
-                        phone_number = excluded.phone_number,
-                        linkedin = excluded.linkedin,
-                        additional_links = excluded.additional_links,
-                        notes = excluded.notes,
-                        socials = excluded.socials,
-                        latitude = excluded.latitude,
-                        longitude = excluded.longitude,
-                        preferred_school = excluded.preferred_school,
-                        preferred_area = excluded.preferred_area,
-                        contact_name = excluded.contact_name,
-                        contact_email = excluded.contact_email,
+                        website = COALESCE(NULLIF(excluded.website, ''), companies.website),
+                        phone_number = COALESCE(NULLIF(excluded.phone_number, ''), companies.phone_number),
+                        linkedin = COALESCE(NULLIF(excluded.linkedin, ''), companies.linkedin),
+                        additional_links = COALESCE(NULLIF(excluded.additional_links, ''), companies.additional_links),
+                        notes = COALESCE(NULLIF(excluded.notes, ''), companies.notes),
+                        socials = COALESCE(NULLIF(excluded.socials, ''), companies.socials),
+                        latitude = COALESCE(excluded.latitude, companies.latitude),
+                        longitude = COALESCE(excluded.longitude, companies.longitude),
+                        preferred_school = COALESCE(NULLIF(excluded.preferred_school, ''), companies.preferred_school),
+                        preferred_area = COALESCE(NULLIF(excluded.preferred_area, ''), companies.preferred_area),
+                        contact_name = COALESCE(NULLIF(excluded.contact_name, ''), companies.contact_name),
+                        contact_email = COALESCE(NULLIF(excluded.contact_email, ''), companies.contact_email),
                         status = excluded.status,
                         donation_amount = excluded.donation_amount,
                         updated_at = CURRENT_TIMESTAMP
                 ''', (company_name, county, description, address, eircode, website, phone_number,
                       linkedin, additional_links, notes, socials, latitude, longitude,
                       preferred_school, preferred_area, contact_name, contact_email, status, donation_amount))
-                
+
                 imported_count += 1
 
             except Exception as e:
-                print(f"Error importing row {index}: {str(e)}")
+                logger.error(f"Error importing company row {index}: {str(e)}")
                 continue
-        
+
         conn.commit()
         conn.close()
-        
-        print(f"✓ Successfully imported {imported_count} company records")
+
+        logger.info(
+            f"Company import from {file_path} complete: {imported_count} records imported/updated, "
+            f"{geocode_failed} geocoding failures, {no_location_data} rows had no address/Eircode at all"
+        )
         return imported_count
-    
+
     except Exception as e:
-        print(f"Error importing from {file_path}: {str(e)}")
+        logger.error(f"Error importing from {file_path}: {str(e)}")
         return 0
 
 
 def _read_school_df(file_path):
     """Read school Excel sheets into DataFrame. Supports multiple formats."""
     frames = []
-    
+
+    # Some sources (e.g. Dept. of Education school census exports) put a
+    # merged title row above the real header row, so header=0 grabs the
+    # title as the column names and every "get_value" lookup below fails
+    # silently, causing every row to look like it has no school name and
+    # get skipped. Scan the first few rows for a recognizable header instead
+    # of assuming row 0 is it.
+    _HEADER_MARKERS = {'roll number', 'roll_number', 'official name', 'school name', 'school_name', 'name'}
+
+    def _find_header_row(raw_df, max_scan=10):
+        for i in range(min(max_scan, len(raw_df))):
+            values = {str(v).strip().lower() for v in raw_df.iloc[i].tolist() if pd.notna(v)}
+            if values & _HEADER_MARKERS:
+                return i
+        return 0
+
+    _RECORD_MARKERS = {'roll number', 'roll_number', 'official name', 'school name', 'school_name', 'name', 'school'}
+    _LOCATION_MARKERS = {
+        'eircode', 'postal code', 'postcode', 'address', 'address (line 1)',
+        'street address', 'location', 'school latitude', 'latitude',
+    }
+
     if file_path.endswith('.csv'):
-        frames.append(pd.read_csv(file_path))
+        raw = _read_csv_robust(file_path, header=None, nrows=10)
+        header_row = _find_header_row(raw)
+        df = _read_csv_robust(file_path, header=header_row)
+        if not df.empty:
+            frames.append(df)
     else:
         engine = 'openpyxl' if file_path.endswith('.xlsx') else 'xlrd'
         xl = pd.ExcelFile(file_path, engine=engine)
-        
-        # Try to read all sheets
+
         for sheet in xl.sheet_names:
             try:
-                df = xl.parse(sheet)
-                if not df.empty and len(df.columns) > 0:
-                    frames.append(df)
-            except Exception:
+                raw = xl.parse(sheet, header=None, nrows=10)
+                if raw.empty:
+                    continue
+                header_row = _find_header_row(raw)
+                df = xl.parse(sheet, header=header_row)
+                df.columns = [str(c).strip() for c in df.columns]
+
+                if df.empty or len(df.columns) == 0:
+                    logger.info(f"Skipping empty sheet '{sheet}' in {file_path}")
+                    continue
+
+                cols_lower = {c.lower() for c in df.columns}
+                if not (cols_lower & _RECORD_MARKERS):
+                    logger.info(
+                        f"Skipping sheet '{sheet}' in {file_path}: no school-name/roll-number "
+                        f"column found, doesn't look like a school record table (columns: {list(df.columns)[:8]})"
+                    )
+                    continue
+                if not (cols_lower & _LOCATION_MARKERS):
+                    logger.warning(
+                        f"Skipping sheet '{sheet}' in {file_path}: has school rows but no "
+                        f"address/Eircode/coordinate columns - looks like an enrolment breakdown "
+                        f"table, not distinct school records; importing it would overwrite existing "
+                        f"location data with blanks"
+                    )
+                    continue
+
+                frames.append(df)
+            except Exception as e:
+                logger.error(f"Error reading sheet '{sheet}' in {file_path}: {e}")
                 continue
-    
+
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
@@ -388,6 +475,11 @@ def import_schools_from_excel(file_path):
         conn = database.get_db_connection()
         cursor = conn.cursor()
         imported_count = 0
+        skipped_no_name = 0
+        geocode_failed = 0
+        no_location_data = 0
+        enrolment_parse_failed = 0
+        gov_matched_count = 0
 
         for index, row in df.iterrows():
             try:
@@ -399,104 +491,238 @@ def import_schools_from_excel(file_path):
                             if pd.notna(val):
                                 return str(val).strip()
                     return default
-                
+
                 # Direct mapping from Excel columns to database fields
                 internal_id = get_value(row, ['id', 'internal id'])
                 roll_number = get_value(row, ['school_id', 'roll number', 'roll_number', 'school id'])
                 school_name = get_value(row, ['name', 'school_name', 'official name', 'school name', 'school'])
-                
+
                 if not school_name or school_name.lower() == 'nan':
+                    skipped_no_name += 1
                     continue
-                
-                county = get_value(row, ['county', 'region', 'area'])
-                address = get_value(row, ['address', 'street address', 'location'])
-                eircode = get_value(row, ['eircode', 'postal code', 'postcode'])
-                school_type = get_value(row, ['school_type', 'school type', 'type'])
-                email = get_value(row, ['contact_email', 'email', 'contact email', 'e-mail'])
-                contact_name = get_value(row, ['contact_name', 'contact info', 'contact person'])
-                deis = get_value(row, ['deis', 'DEIS'], None)
-                school_level = get_value(row, ['school_level', 'school level', 'level'])
-                
-                enrolment_raw = get_value(row, ['enrolment', 'enrollment', 'students', 'pupils'])
-                try:
-                    enrolment = int(float(enrolment_raw)) if enrolment_raw else None
-                except (ValueError, TypeError):
-                    enrolment = None
-                
-                # Get coordinates from Eircode using Nominatim
-                latitude = None
-                longitude = None
-                
-                if eircode:
-                    coords_str = convert_eircode_to_address(eircode)
-                    if coords_str and ',' in coords_str:
-                        parts = coords_str.split(',')
-                        if len(parts) == 2:
+
+                # The government school registry (data/gov_data) is the
+                # authoritative source: if this school's name (or roll
+                # number) is found there, its data wins over whatever the
+                # imported file supplied, and Nominatim geocoding is skipped
+                # entirely since the registry already has exact coordinates.
+                gov_match = gov_schools.find_gov_match(school_name, roll_number)
+
+                if gov_match:
+                    gov_matched_count += 1
+                    roll_number = gov_match['roll_number'] or roll_number
+                    school_name = gov_match['school_name']
+                    county = gov_match['county']
+                    address = gov_match['address']
+                    eircode = gov_match['eircode']
+                    school_type = gov_match['school_type']
+                    email = gov_match['email']
+                    contact_name = gov_match['contact_name']
+                    phone = gov_match['phone']
+                    deis = gov_match['deis']
+                    school_level = gov_match['school_level']
+                    enrolment = gov_match['enrolment']
+                    latitude = gov_match['latitude']
+                    longitude = gov_match['longitude']
+                else:
+                    county = get_value(row, ['county', 'region', 'area', 'county description'])
+
+                    # Government exports split the address across up to 4 columns
+                    # instead of a single "address" field.
+                    address_lines = [get_value(row, [f'address (line {n})']) for n in (1, 2, 3, 4)]
+                    address_lines = [line for line in address_lines if line]
+                    address = ', '.join(address_lines) if address_lines else get_value(row, ['address', 'street address', 'location'])
+
+                    eircode = get_value(row, ['eircode', 'postal code', 'postcode'])
+                    school_type = get_value(row, ['school_type', 'school type', 'type'])
+                    email = get_value(row, ['contact_email', 'email', 'contact email', 'e-mail'])
+                    contact_name = get_value(row, ['contact_name', 'contact info', 'contact person', 'principal name'])
+                    phone = get_value(row, ['phone', 'phone no.', 'phone number', 'telephone'])
+                    deis = get_value(row, ['deis', 'deis (y/n)'], None)
+                    school_level = get_value(row, ['school_level', 'school level', 'level'])
+
+                    enrolment_raw = get_value(row, ['enrolment', 'enrollment', 'students', 'pupils', 'enrolment per return'])
+                    try:
+                        enrolment = int(float(enrolment_raw)) if enrolment_raw else None
+                    except (ValueError, TypeError):
+                        logger.warning(f"School import row {index} ('{school_name}'): could not parse enrolment value '{enrolment_raw}', leaving it blank")
+                        enrolment = None
+                        enrolment_parse_failed += 1
+
+                    # Prefer coordinates provided directly by the source file
+                    # (e.g. "School Latitude"/"School Longitude" columns) - only
+                    # fall back to a Nominatim lookup, and its 1-request/second
+                    # rate limit, when they're missing. Geocoding every one of a
+                    # few thousand rows here would make a bulk import take well
+                    # over an hour and likely get cut off mid-way by a request
+                    # timeout, leaving most schools unmapped.
+                    latitude = None
+                    longitude = None
+                    lat_raw = get_value(row, ['school latitude', 'latitude', 'lat'])
+                    lon_raw = get_value(row, ['school longitude', 'longitude', 'lon', 'lng'])
+                    if lat_raw and lon_raw:
+                        try:
+                            latitude = float(lat_raw)
+                            longitude = float(lon_raw)
+                        except (ValueError, TypeError):
+                            logger.warning(f"School import row {index} ('{school_name}'): invalid latitude/longitude in source data ('{lat_raw}', '{lon_raw}')")
+
+                    if latitude is None or longitude is None:
+                        if eircode or address:
                             try:
-                                latitude = float(parts[0].strip())
-                                longitude = float(parts[1].strip())
-                            except Exception:
-                                pass
-                
-                # Insert or update record with all fields
+                                latitude, longitude = geocode_location(eircode=eircode, address=address)
+                            except ValueError as e:
+                                geocode_failed += 1
+                                logger.warning(f"School import row {index} ('{school_name}', roll {roll_number}): {e}")
+                        else:
+                            no_location_data += 1
+                            logger.warning(f"School import row {index} ('{school_name}', roll {roll_number}): no coordinates, address or Eircode in source data - this school will not appear on the map or in distance-based matches")
+
+                # Insert or update record with all fields. COALESCE keeps the
+                # previous value when the incoming one is blank, so a partial
+                # re-import can't wipe out coordinates/details that were
+                # already resolved by an earlier import.
                 if roll_number:
                     # Use roll_number as unique key
-                    conflict_clause = 'ON CONFLICT(roll_number) DO UPDATE SET'
-                    cursor.execute(f'''
-                        INSERT INTO schools 
+                    cursor.execute('''
+                        INSERT INTO schools
                         (internal_id, roll_number, school_name, county, address, eircode,
-                         school_type, email, contact_name, deis, school_level, enrolment,
+                         school_type, email, contact_name, phone, deis, school_level, enrolment,
                          latitude, longitude, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        {conflict_clause}
-                            internal_id = excluded.internal_id,
-                            county = excluded.county,
-                            address = excluded.address,
-                            eircode = excluded.eircode,
-                            school_type = excluded.school_type,
-                            email = excluded.email,
-                            contact_name = excluded.contact_name,
-                            deis = excluded.deis,
-                            school_level = excluded.school_level,
-                            enrolment = excluded.enrolment,
-                            latitude = excluded.latitude,
-                            longitude = excluded.longitude,
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(roll_number) DO UPDATE SET
+                            internal_id = COALESCE(NULLIF(excluded.internal_id, ''), schools.internal_id),
+                            school_name = excluded.school_name,
+                            county = COALESCE(NULLIF(excluded.county, ''), schools.county),
+                            address = COALESCE(NULLIF(excluded.address, ''), schools.address),
+                            eircode = COALESCE(NULLIF(excluded.eircode, ''), schools.eircode),
+                            school_type = COALESCE(NULLIF(excluded.school_type, ''), schools.school_type),
+                            email = COALESCE(NULLIF(excluded.email, ''), schools.email),
+                            contact_name = COALESCE(NULLIF(excluded.contact_name, ''), schools.contact_name),
+                            phone = COALESCE(NULLIF(excluded.phone, ''), schools.phone),
+                            deis = COALESCE(excluded.deis, schools.deis),
+                            school_level = COALESCE(NULLIF(excluded.school_level, ''), schools.school_level),
+                            enrolment = COALESCE(excluded.enrolment, schools.enrolment),
+                            latitude = COALESCE(excluded.latitude, schools.latitude),
+                            longitude = COALESCE(excluded.longitude, schools.longitude),
                             updated_at = CURRENT_TIMESTAMP
                     ''', (internal_id, roll_number, school_name, county, address, eircode,
-                          school_type, email, contact_name, deis, school_level, enrolment,
+                          school_type, email, contact_name, phone, deis, school_level, enrolment,
                           latitude, longitude, 'active'))
                 else:
-                    # No roll_number - check if school_name already exists
-                    cursor.execute('SELECT COUNT(*) FROM schools WHERE school_name = ?', (school_name,))
-                    exists = cursor.fetchone()[0]
-                    
-                    if exists == 0:
-                        # Insert new record without conflict clause
+                    # No roll_number to key off - fall back to matching by
+                    # name. Update it (instead of skipping) so a school that
+                    # failed to geocode on a previous import can be fixed up
+                    # by a later re-import, rather than being stuck forever.
+                    cursor.execute('SELECT id FROM schools WHERE school_name = ?', (school_name,))
+                    existing = cursor.fetchone()
+
+                    if existing is None:
                         cursor.execute('''
-                            INSERT INTO schools 
+                            INSERT INTO schools
                             (internal_id, roll_number, school_name, county, address, eircode,
-                             school_type, email, contact_name, deis, school_level, enrolment,
+                             school_type, email, contact_name, phone, deis, school_level, enrolment,
                              latitude, longitude, status)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ''', (internal_id, roll_number, school_name, county, address, eircode,
-                              school_type, email, contact_name, deis, school_level, enrolment,
+                              school_type, email, contact_name, phone, deis, school_level, enrolment,
                               latitude, longitude, 'active'))
-                    # else: skip duplicate school_name
-                
+                    else:
+                        cursor.execute('''
+                            UPDATE schools SET
+                                internal_id = COALESCE(NULLIF(?, ''), internal_id),
+                                county = COALESCE(NULLIF(?, ''), county),
+                                address = COALESCE(NULLIF(?, ''), address),
+                                eircode = COALESCE(NULLIF(?, ''), eircode),
+                                school_type = COALESCE(NULLIF(?, ''), school_type),
+                                email = COALESCE(NULLIF(?, ''), email),
+                                contact_name = COALESCE(NULLIF(?, ''), contact_name),
+                                phone = COALESCE(NULLIF(?, ''), phone),
+                                deis = COALESCE(?, deis),
+                                school_level = COALESCE(NULLIF(?, ''), school_level),
+                                enrolment = COALESCE(?, enrolment),
+                                latitude = COALESCE(?, latitude),
+                                longitude = COALESCE(?, longitude),
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?
+                        ''', (internal_id, county, address, eircode, school_type, email,
+                              contact_name, phone, deis, school_level, enrolment, latitude, longitude,
+                              existing['id']))
+
                 imported_count += 1
-                
+
             except Exception as e:
-                print(f"Error importing school row {index}: {e}")
+                logger.error(f"Error importing school row {index}: {e}")
                 continue
 
         conn.commit()
         conn.close()
-        print(f"✓ Successfully imported {imported_count} school records")
+        logger.info(
+            f"School import from {file_path} complete: {imported_count} records imported/updated, "
+            f"{gov_matched_count} matched against the government school registry, "
+            f"{skipped_no_name} rows skipped (no school name), {geocode_failed} geocoding failures, "
+            f"{no_location_data} rows had no coordinates/address/Eircode at all, "
+            f"{enrolment_parse_failed} enrolment values could not be parsed"
+        )
         return imported_count
 
     except Exception as e:
-        print(f"Error importing schools from {file_path}: {e}")
+        logger.error(f"Error importing schools from {file_path}: {e}")
         return 0
+
+
+def reconcile_schools_with_gov_registry():
+    """Match every school already in the database against the government
+    school registry (data/gov_data) by name/roll number, and update the
+    matched ones with the registry's data. Never inserts new rows and never
+    touches an unmatched school - this is what keeps the ~3,900 schools in
+    the registry that nobody added from ever appearing on the site.
+
+    Returns (matched_count, total_count).
+    """
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, school_name, roll_number FROM schools')
+    schools = cursor.fetchall()
+
+    matched_count = 0
+    for school in schools:
+        gov_match = gov_schools.find_gov_match(school['school_name'], school['roll_number'])
+        if not gov_match:
+            continue
+        matched_count += 1
+        cursor.execute('''
+            UPDATE schools SET
+                roll_number = COALESCE(?, roll_number),
+                school_name = ?,
+                county = COALESCE(?, county),
+                address = COALESCE(?, address),
+                eircode = COALESCE(?, eircode),
+                school_type = COALESCE(?, school_type),
+                school_level = COALESCE(?, school_level),
+                deis = COALESCE(?, deis),
+                enrolment = COALESCE(?, enrolment),
+                email = COALESCE(?, email),
+                phone = COALESCE(?, phone),
+                contact_name = COALESCE(?, contact_name),
+                contact_info = COALESCE(?, contact_info),
+                latitude = COALESCE(?, latitude),
+                longitude = COALESCE(?, longitude),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (gov_match['roll_number'], gov_match['school_name'], gov_match['county'],
+              gov_match['address'], gov_match['eircode'], gov_match['school_type'],
+              gov_match['school_level'], gov_match['deis'], gov_match['enrolment'],
+              gov_match['email'], gov_match['phone'], gov_match['contact_name'],
+              gov_match['contact_name'], gov_match['latitude'], gov_match['longitude'],
+              school['id']))
+
+    conn.commit()
+    conn.close()
+    logger.info(
+        f"Gov registry reconciliation complete: {matched_count}/{len(schools)} schools matched and updated"
+    )
+    return matched_count, len(schools)
 
 
 def get_all_companies():
@@ -540,6 +766,14 @@ def get_all_schools():
     return schools
 
 
+# Same bounding box _ireland_coords() uses to validate Nominatim results -
+# reused here so a school/company with a garbage coordinate (e.g. an Irish
+# Grid Easting/Northing value stored in latitude/longitude by mistake) can
+# never show up on the map instead of being NULL.
+_IRELAND_LAT_RANGE = (51.4, 55.4)
+_IRELAND_LON_RANGE = (-10.7, -5.4)
+
+
 def get_school_locations():
     """Get all schools with valid coordinates for map display."""
     conn = database.get_db_connection()
@@ -548,9 +782,9 @@ def get_school_locations():
         SELECT id, school_name, eircode, address, county,
                latitude, longitude, email
         FROM schools
-        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
         ORDER BY school_name ASC
-    ''')
+    ''', (*_IRELAND_LAT_RANGE, *_IRELAND_LON_RANGE))
     locations = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return locations
@@ -559,22 +793,22 @@ def get_school_locations():
 def get_company_locations():
     """
     Get all companies with valid coordinates for map display.
-    
+
     Returns:
         List of location dictionaries with lat/lon
     """
     conn = database.get_db_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         SELECT id, company_name, eircode, address, latitude, longitude,
                preferred_school, preferred_area, contact_name, contact_email,
                status
         FROM companies
-        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
         ORDER BY created_at DESC
-    ''')
-    
+    ''', (*_IRELAND_LAT_RANGE, *_IRELAND_LON_RANGE))
+
     locations = [dict(row) for row in cursor.fetchall()]
     conn.close()
 
@@ -588,19 +822,16 @@ def welcome():
         companies = get_all_companies()
         schools = get_all_schools()
         locations = get_company_locations()
-        
+
         # Count active partnerships
         active_count = sum(1 for c in companies if c.get('status') == 'active')
         active_schools = sum(1 for s in schools if s.get('status') == 'active')
-        
-        # Count engaged corps and schools (those with donations > 0)
-        engaged_corps_count = sum(1 for c in companies if c.get('status') == 'active' and c.get('donation_amount', 0) > 0)
-        engaged_schools_count = sum(1 for s in schools if s.get('status') == 'active' and s.get('donation_received', 0) > 0)
-        
-        # Get matched companies and schools by county
-        county_matches = get_matched_companies_and_schools_by_county()
-        
-        # Get company and school locations for map
+
+        # Get company and school locations for map. get_company_locations()
+        # and get_school_locations() already filter to plausible Ireland
+        # coordinates, so a school with a garbage stored latitude/longitude
+        # (e.g. an Irish Grid Easting/Northing value instead of WGS84) can't
+        # end up plotted at some nonsensical spot on the map.
         company_locations = []
         for loc in locations:
             if loc.get('latitude') and loc.get('longitude'):
@@ -610,9 +841,9 @@ def welcome():
                     'lon': float(loc.get('longitude')),
                     'eircode': loc.get('eircode', '')
                 })
-        
+
         school_locations = []
-        for school in schools:
+        for school in get_school_locations():
             if school.get('latitude') and school.get('longitude'):
                 school_locations.append({
                     'name': school.get('school_name', ''),
@@ -621,10 +852,10 @@ def welcome():
                     'address': school.get('address', '')
                 })
         
-        print(f"DEBUG: Company locations count: {len(company_locations)}")
-        print(f"DEBUG: School locations count: {len(school_locations)}")
-        print(f"DEBUG: Total locations from DB: {len(locations)}")
-        print(f"DEBUG: Sample company location: {company_locations[0] if company_locations else 'None'}")
+        logger.info(
+            f"Map data: {len(company_locations)}/{len(companies)} companies mapped, "
+            f"{len(school_locations)}/{len(schools)} schools mapped"
+        )
         
         return render_template('welcome.html', 
                              company_count=len(companies),
@@ -632,22 +863,16 @@ def welcome():
                              location_count=len(locations),
                              active_count=active_count,
                              active_schools=active_schools,
-                             engaged_corps_count=engaged_corps_count,
-                             engaged_schools_count=engaged_schools_count,
-                             county_matches=county_matches,
                              company_locations=company_locations,
                              school_locations=school_locations)
-    
+
     except Exception as e:
-        return render_template('welcome.html', 
+        return render_template('welcome.html',
                              company_count=0,
                              school_count=0,
                              location_count=0,
                              active_count=0,
                              active_schools=0,
-                             engaged_corps_count=0,
-                             engaged_schools_count=0,
-                             county_matches=[],
                              company_locations=[],
                              school_locations=[],
                              message=f'Error loading data: {str(e)}')
@@ -704,7 +929,7 @@ def eircode_viewer():
                 })
                 
             except Exception as e:
-                print(f"Error reading {filename}: {str(e)}")
+                logger.error(f"Error reading {filename}: {str(e)}")
                 continue
         
         if not all_dataframes:
@@ -723,16 +948,16 @@ def eircode_viewer():
         
         # If Eircode column found, convert to coordinates
         if eircode_column:
-            print(f"Found Eircode column: {eircode_column}")
+            logger.info(f"Found Eircode column: {eircode_column}")
             eircodes = combined_df[eircode_column].tolist()
-            
+
             # Convert Eircodes to coordinates
             coordinates = convert_eircode_batch(eircodes, delay=0.2)
-            
+
             # Add Coordinates column
             combined_df['Coordinates'] = coordinates
         else:
-            print("No Eircode column found. Displaying original data only.")
+            logger.info("No Eircode column found. Displaying original data only.")
         
         # Replace NaN values with empty string for better display
         combined_df = combined_df.fillna('')
@@ -926,7 +1151,7 @@ def school_information():
                 # Replace original IDs with sequential numbers (1, 2, 3, ...)
                 school_df['id'] = range(1, len(school_df) + 1)
             except Exception as e:
-                print(f"Warning: Could not sort by id: {e}")
+                logger.warning(f"Could not sort by id: {e}")
 
         html_table = school_df.to_html(classes='data-table', index=False, escape=False)
 
@@ -985,6 +1210,24 @@ def admin_import():
     
     # GET request - show admin page with stats
     return render_template('admin.html', **get_admin_stats())
+
+
+@app.route('/admin/schools/reconcile-gov', methods=['POST'])
+def reconcile_gov_schools():
+    """Match every school already in the database against the government
+    school registry by name/roll number and update matched ones with the
+    registry's data. Safe to re-run any time."""
+    try:
+        matched_count, total_count = reconcile_schools_with_gov_registry()
+        return render_template('admin.html',
+                             message=f'✓ Reconciled with government registry: {matched_count} of {total_count} schools matched and updated.',
+                             success=True,
+                             **get_admin_stats())
+    except Exception as e:
+        return render_template('admin.html',
+                             message=f'✗ Reconciliation failed: {str(e)}',
+                             success=False,
+                             **get_admin_stats())
 
 
 @app.route('/admin/upload', methods=['POST'])
@@ -1172,6 +1415,7 @@ def save_school():
         email = request.form.get('email') or None
         phone = request.form.get('phone') or None
         contact_info = request.form.get('contact_info') or None
+        contact_name = None
         deis = request.form.get('deis') or None
         school_type = request.form.get('school_type') or None
         school_level = request.form.get('school_level') or None
@@ -1179,36 +1423,75 @@ def save_school():
         enrolment = int(enrolment_raw) if enrolment_raw and enrolment_raw.strip().isdigit() else None
         status = request.form.get('status', 'active')
 
-        try:
-            latitude, longitude = geocode_location(eircode=eircode, address=address)
-        except ValueError as e:
-            return render_template('admin.html',
-                                   message=f'✗ Location not found: {e}. Please check the address or Eircode.',
-                                   success=False,
-                                   **get_admin_stats())
+        # The government school registry (data/gov_data) is the authoritative
+        # source: if this school's name (or roll number) is found there, its
+        # data wins over whatever was typed into the form, and Nominatim
+        # geocoding is skipped entirely since the registry already has exact
+        # coordinates.
+        gov_match = gov_schools.find_gov_match(school_name, roll_number)
+        latitude = longitude = None
+        if gov_match:
+            roll_number = gov_match['roll_number'] or roll_number
+            school_name = gov_match['school_name']
+            eircode = gov_match['eircode']
+            address = gov_match['address']
+            county = gov_match['county']
+            deis = gov_match['deis']
+            school_type = gov_match['school_type']
+            school_level = gov_match['school_level']
+            enrolment = gov_match['enrolment']
+            email = gov_match['email']
+            phone = gov_match['phone']
+            contact_info = gov_match['contact_name']
+            contact_name = gov_match['contact_name']
+            latitude = gov_match['latitude']
+            longitude = gov_match['longitude']
+
+        if latitude is None or longitude is None:
+            try:
+                latitude, longitude = geocode_location(eircode=eircode, address=address)
+            except ValueError as e:
+                return render_template('admin.html',
+                                       message=f'✗ Location not found: {e}. Please check the address or Eircode.',
+                                       success=False,
+                                       **get_admin_stats())
+
+        # The "Add School" form has no way to know a school already exists,
+        # but gov-registry enrichment can now resolve the same roll_number
+        # for a name that was already added previously (manually or via
+        # import) - without this check that would hit roll_number's UNIQUE
+        # constraint and fail instead of just updating the existing row.
+        if not school_id:
+            if roll_number:
+                cursor.execute('SELECT id FROM schools WHERE roll_number = ?', (roll_number,))
+            else:
+                cursor.execute('SELECT id FROM schools WHERE school_name = ?', (school_name,))
+            existing = cursor.fetchone()
+            if existing:
+                school_id = existing['id']
 
         if school_id:
             cursor.execute('''
                 UPDATE schools
                 SET school_name = ?, roll_number = ?, eircode = ?, address = ?, county = ?,
-                    email = ?, phone = ?, contact_info = ?,
+                    email = ?, phone = ?, contact_info = ?, contact_name = ?,
                     deis = ?, school_type = ?, school_level = ?, enrolment = ?,
                     latitude = ?, longitude = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             ''', (school_name, roll_number, eircode, address, county,
-                  email, phone, contact_info,
+                  email, phone, contact_info, contact_name,
                   deis, school_type, school_level, enrolment,
                   latitude, longitude, status, school_id))
         else:
             cursor.execute('''
                 INSERT INTO schools
                 (school_name, roll_number, eircode, address, county,
-                 email, phone, contact_info,
+                 email, phone, contact_info, contact_name,
                  deis, school_type, school_level, enrolment,
                  latitude, longitude, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (school_name, roll_number, eircode, address, county,
-                  email, phone, contact_info,
+                  email, phone, contact_info, contact_name,
                   deis, school_type, school_level, enrolment,
                   latitude, longitude, status))
         
@@ -1356,7 +1639,7 @@ def get_all_team_files():
         conn.close()
         return files
     except Exception as e:
-        print(f"Error getting team files: {e}")
+        logger.error(f"Error getting team files: {e}")
         return []
 
 
@@ -1554,6 +1837,13 @@ def get_matches_for_company(company_id, top_n=10):
     c_lat = company.get('latitude')
     c_lon = company.get('longitude')
 
+    if not (c_lat and c_lon):
+        logger.warning(
+            f"Matching: company '{company.get('company_name')}' (id={company_id}) has no "
+            f"coordinates - distance score will be 0 for every school, so matches will be "
+            f"ranked on area/DEIS/enrolment alone"
+        )
+
     results = []
     for school in schools:
         is_preferred = bool(preferred_name and preferred_name in (school.get('school_name') or '').lower())
@@ -1611,27 +1901,47 @@ def get_matches_for_company(company_id, top_n=10):
     return results[:top_n]
 
 
+def _log_school_coord_coverage():
+    schools = get_all_schools()
+    missing = [s.get('school_name') for s in schools if not (s.get('latitude') and s.get('longitude'))]
+    if missing:
+        logger.warning(
+            f"Matching: {len(missing)}/{len(schools)} schools have no coordinates and get a "
+            f"distance score of 0, so they will rarely surface in top matches: {missing[:20]}"
+            + ('...' if len(missing) > 20 else '')
+        )
+
+
 @app.route('/match')
 def match_overview():
-    """Overview: all companies with their top 3 school matches."""
+    """Overview: all companies with their top 3 school matches, companies
+    ranked by their own best match score (highest or lowest first)."""
+    sort_order = request.args.get('sort', 'best')
+    _log_school_coord_coverage()
     companies = get_all_companies()
     overview = []
     for company in companies:
         matches = get_matches_for_company(company['id'], top_n=3)
-        overview.append({'company': company, 'matches': matches})
-    return render_template('match.html', overview=overview, view='overview')
+        best_score = matches[0][1]['total_score'] if matches else -1
+        overview.append({'company': company, 'matches': matches, 'best_score': best_score})
+    overview.sort(key=lambda row: row['best_score'], reverse=(sort_order == 'best'))
+    return render_template('match.html', overview=overview, view='overview', sort_order=sort_order)
 
 
 @app.route('/match/company/<int:company_id>')
 def match_detail(company_id):
     """Detail: top 10 matches for one company."""
+    sort_order = request.args.get('sort', 'best')
     companies = get_all_companies()
     company = next((c for c in companies if c['id'] == company_id), None)
     if company is None:
         return render_template('match.html', error='Company not found', view='detail',
-                               company=None, matches=[])
+                               company=None, matches=[], sort_order=sort_order)
+    _log_school_coord_coverage()
     matches = get_matches_for_company(company_id, top_n=10)
-    return render_template('match.html', company=company, matches=matches, view='detail')
+    if sort_order == 'worst':
+        matches.reverse()
+    return render_template('match.html', company=company, matches=matches, view='detail', sort_order=sort_order)
 
 
 @app.route('/api/geojson-markers')
@@ -1663,6 +1973,22 @@ def geojson_markers():
         except Exception:
             pass
     return jsonify({'type': 'FeatureCollection', 'features': features})
+
+
+@app.route('/api/school-lookup')
+def school_lookup():
+    """Look up a school by name in the government registry, for the 'Add
+    School' admin form's autofill button. Returns the same fields save_school
+    would use to enrich the record, so the admin can review them before
+    saving rather than only finding out after the fact."""
+    from flask import jsonify
+    name = request.args.get('name', '').strip()
+    if not name:
+        return jsonify({'found': False})
+    match = gov_schools.find_gov_match(name)
+    if not match:
+        return jsonify({'found': False})
+    return jsonify({'found': True, **match})
 
 
 if __name__ == '__main__':

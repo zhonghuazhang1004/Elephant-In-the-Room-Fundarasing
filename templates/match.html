@@ -207,6 +207,11 @@
     <div class="header">
         <h1>Company–School Matching</h1>
         <p>Top 3 school matches for each company based on proximity, preferences, DEIS status and enrolment</p>
+        <div style="margin-top:15px;">
+            <a href="{{ url_for('match_overview', sort='worst' if sort_order == 'best' else 'best') }}" class="btn btn-secondary">
+                {% if sort_order == 'worst' %}⇅ Companies: Worst match first (click for Best match first){% else %}⇅ Companies: Best match first (click for Worst match first){% endif %}
+            </a>
+        </div>
     </div>
 
     {% if not overview %}
@@ -294,7 +299,12 @@
     <div class="data-section company-card">
         <div class="data-header">
             <div class="data-title">{{ company.company_name }}</div>
-            <a href="/match" class="btn btn-secondary">← Back to Overview</a>
+            <div style="display:flex; gap:10px;">
+                <a href="{{ url_for('match_detail', company_id=company.id, sort='worst' if sort_order == 'best' else 'best') }}" class="btn btn-secondary">
+                    {% if sort_order == 'worst' %}⇅ Sort: Worst → Best (click for Best → Worst){% else %}⇅ Sort: Best → Worst (click for Worst → Best){% endif %}
+                </a>
+                <a href="/match" class="btn btn-secondary">← Back to Overview</a>
+            </div>
         </div>
         <div class="company-meta">
             <div class="company-meta-item"><strong>Eircode:</strong> {{ company.eircode or '—' }}</div>
