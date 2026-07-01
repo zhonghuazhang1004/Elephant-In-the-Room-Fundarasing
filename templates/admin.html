@@ -615,6 +615,9 @@
                     <form method="POST" action="/admin/import" style="display: inline;">
                         <button type="submit" class="btn btn-success">🔄 Re-import from Excel</button>
                     </form>
+                    <form method="POST" action="/admin/schools/reconcile-gov" style="display: inline;">
+                        <button type="submit" class="btn btn-success">🏛️ Reconcile Schools with Gov Registry</button>
+                    </form>
                     <button onclick="openAddModal('company')" class="btn btn-primary">➕ Add Company</button>
                     <button onclick="openAddModal('school')" class="btn btn-primary">➕ Add School</button>
                     <button onclick="confirmClear()" class="btn btn-danger">⚠️ Clear All Data</button>
@@ -827,7 +830,11 @@
                 <input type="hidden" id="schoolId" name="id">
                 <div class="form-group">
                     <label>School Name *</label>
-                    <input type="text" id="schoolName" name="school_name" required>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="schoolName" name="school_name" required style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" onclick="autofillFromGovRegistry()">🔍 Autofill</button>
+                    </div>
+                    <div id="schoolGovLookupStatus" style="font-size: 12px; margin-top: 4px;"></div>
                 </div>
                 <div class="form-group">
                     <label>Eircode</label>
@@ -952,6 +959,46 @@
             document.getElementById('schoolContactInfo').value = school.contact_info || '';
             document.getElementById('schoolStatus').value = school.status || 'active';
             document.getElementById('schoolModal').style.display = 'block';
+        }
+
+        function autofillFromGovRegistry() {
+            var name = document.getElementById('schoolName').value.trim();
+            var status = document.getElementById('schoolGovLookupStatus');
+
+            if (!name) {
+                status.textContent = 'Type a school name first.';
+                status.style.color = '#e67e22';
+                return;
+            }
+
+            status.textContent = 'Looking up...';
+            status.style.color = '#666';
+
+            fetch('/api/school-lookup?name=' + encodeURIComponent(name))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.found) {
+                        status.textContent = '✗ No match found in the government registry - you can still fill in the fields manually.';
+                        status.style.color = '#e74c3c';
+                        return;
+                    }
+                    document.getElementById('schoolName').value = data.school_name || name;
+                    document.getElementById('schoolEircode').value = data.eircode || '';
+                    document.getElementById('schoolAddress').value = data.address || '';
+                    document.getElementById('schoolCounty').value = data.county || '';
+                    document.getElementById('schoolLevel').value = data.school_level || '';
+                    document.getElementById('schoolDeis').value = data.deis || '';
+                    document.getElementById('schoolEnrolment').value = data.enrolment != null ? data.enrolment : '';
+                    document.getElementById('schoolEmail').value = data.email || '';
+                    document.getElementById('schoolPhone').value = data.phone || '';
+                    document.getElementById('schoolContactInfo').value = data.contact_name || '';
+                    status.textContent = '✓ Filled in from the government school registry.';
+                    status.style.color = '#36943b';
+                })
+                .catch(function () {
+                    status.textContent = '✗ Lookup failed - try again.';
+                    status.style.color = '#e74c3c';
+                });
         }
 
         // Handle sidebar navigation active state
