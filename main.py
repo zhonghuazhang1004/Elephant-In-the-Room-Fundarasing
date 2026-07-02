@@ -801,7 +801,7 @@ def get_company_locations():
     cursor = conn.cursor()
 
     cursor.execute('''
-        SELECT id, company_name, eircode, address, latitude, longitude,
+        SELECT id, company_name, eircode, address, county, latitude, longitude,
                preferred_school, preferred_area, contact_name, contact_email,
                status
         FROM companies
@@ -839,7 +839,8 @@ def welcome():
                     'name': loc.get('company_name', ''),
                     'lat': float(loc.get('latitude')),
                     'lon': float(loc.get('longitude')),
-                    'eircode': loc.get('eircode', '')
+                    'eircode': loc.get('eircode', ''),
+                    'county': loc.get('county') or ''
                 })
 
         school_locations = []
@@ -849,7 +850,8 @@ def welcome():
                     'name': school.get('school_name', ''),
                     'lat': float(school.get('latitude')),
                     'lon': float(school.get('longitude')),
-                    'address': school.get('address', '')
+                    'address': school.get('address', ''),
+                    'county': school.get('county') or ''
                 })
         
         logger.info(
