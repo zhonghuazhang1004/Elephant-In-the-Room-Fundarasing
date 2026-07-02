@@ -410,7 +410,7 @@
             </div>
 
             <p class="hero-subtitle">
-                This platform helps Fidelity and Elephant in the Room coordinate school fundraising
+                This platform helps Elephant in the Room coordinate school fundraising
                 partnerships across Ireland. It keeps a shared record of partner companies and
                 participating schools, matches companies with nearby schools by county and preferred
                 area, and plots every partner's location on an interactive map, giving coordinators
@@ -448,6 +448,14 @@
                     style="padding: 8px 20px; border-radius: 20px; border: 2px solid #e53935; background: white; color: #e53935; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
                     🎓 Schools
                 </button>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label for="county-select" style="font-size: 14px; font-weight: 600; color: #444; white-space: nowrap;">County:</label>
+                    <select id="county-select" onchange="setCounty(this.value)"
+                        style="padding: 8px 12px; border-radius: 20px; border: 2px solid #ccc; font-size: 14px; color: #444; cursor: pointer; outline: none; background: white;">
+                        <option value="">All counties</option>
+                    </select>
+                </div>
 
                 <div style="margin-left: auto; display: flex; gap: 20px; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -494,10 +502,11 @@
         var companyCluster = L.markerClusterGroup(clusterOpts);
         var schoolCluster  = L.markerClusterGroup(clusterOpts);
 
-        var _dbCompanyMarkers = [];  // DB company markers
-        var _dbSchoolMarkers  = [];  // DB school markers
+        var _dbCompanyMarkers = [];  // [{marker, county}] - DB company markers
+        var _dbSchoolMarkers  = [];  // [{marker, county}] - DB school markers
 
         var _activeType   = 'all';
+        var _activeCounty = '';
 
         function applyFilters() {
             var showCompany = _activeType === 'all' || _activeType === 'companies';
@@ -507,14 +516,20 @@
             schoolCluster.clearLayers();
 
             if (showCompany) {
-                _dbCompanyMarkers.forEach(function (m) { companyCluster.addLayer(m); });
+                _dbCompanyMarkers.forEach(function (item) {
+                    if (_activeCounty && item.county !== _activeCounty) return;
+                    companyCluster.addLayer(item.marker);
+                });
                 mapInstance.addLayer(companyCluster);
             } else {
                 mapInstance.removeLayer(companyCluster);
             }
 
             if (showSchool) {
-                _dbSchoolMarkers.forEach(function (m) { schoolCluster.addLayer(m); });
+                _dbSchoolMarkers.forEach(function (item) {
+                    if (_activeCounty && item.county !== _activeCounty) return;
+                    schoolCluster.addLayer(item.marker);
+                });
                 mapInstance.addLayer(schoolCluster);
             } else {
                 mapInstance.removeLayer(schoolCluster);
@@ -535,6 +550,11 @@
             btnSchools.style.background   = type === 'schools'   ? '#e53935' : 'white';
             btnSchools.style.color        = type === 'schools'   ? 'white'   : '#e53935';
 
+            applyFilters();
+        }
+
+        function setCounty(county) {
+            _activeCounty = county;
             applyFilters();
         }
 
@@ -567,27 +587,41 @@
             // can't end up plotted twice from two different data sources.
             var companyLocations = {{ company_locations | default([]) | tojson }};
             var schoolLocations  = {{ school_locations  | default([]) | tojson }};
+            var counties = new Set();
 
             companyLocations.forEach(function (loc) {
                 if (!loc || !loc.lat || !loc.lon) return;
                 var m = L.marker([loc.lat, loc.lon], { icon: companyIcon });
                 m.bindPopup('<strong>' + (loc.name || 'Company') + '</strong>' +
-                    (loc.eircode ? '<br>Eircode: ' + loc.eircode : ''));
-                _dbCompanyMarkers.push(m);
+                    (loc.eircode ? '<br>Eircode: ' + loc.eircode : '') +
+                    (loc.county ? '<br><span style="color:#888;font-size:12px;">📍 ' + loc.county + '</span>' : ''));
+                _dbCompanyMarkers.push({ marker: m, county: loc.county || null });
                 companyCluster.addLayer(m);
+                if (loc.county) counties.add(loc.county);
             });
 
             schoolLocations.forEach(function (loc) {
                 if (!loc || !loc.lat || !loc.lon) return;
                 var m = L.marker([loc.lat, loc.lon], { icon: schoolIcon });
                 m.bindPopup('<strong>' + (loc.name || 'School') + '</strong>' +
-                    (loc.address ? '<br>' + loc.address : ''));
-                _dbSchoolMarkers.push(m);
+                    (loc.address ? '<br>' + loc.address : '') +
+                    (loc.county ? '<br><span style="color:#888;font-size:12px;">📍 ' + loc.county + '</span>' : ''));
+                _dbSchoolMarkers.push({ marker: m, county: loc.county || null });
                 schoolCluster.addLayer(m);
+                if (loc.county) counties.add(loc.county);
+            });
+
+            // Populate county dropdown
+            var select = document.getElementById('county-select');
+            Array.from(counties).sort().forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
             });
 
             // Fit map to all markers
-            var all = _dbCompanyMarkers.concat(_dbSchoolMarkers);
+            var all = _dbCompanyMarkers.concat(_dbSchoolMarkers).map(function (item) { return item.marker; });
             if (all.length > 0) {
                 mapInstance.fitBounds(L.featureGroup(all).getBounds().pad(0.1));
             }
